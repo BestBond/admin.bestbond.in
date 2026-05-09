@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom"
 import SignUp from "./pages/SignUp"
+import BootstrapSuperAdmin from "./pages/BootstrapSuperAdmin"
 import Dashboard from "./pages/Dashboard"
 import UserList from "./pages/UserList"
 import UserProfile from "./pages/UserProfile"
@@ -36,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<SignUp />} />
+        <Route path="/bootstrap-superadmin" element={<BootstrapSuperAdmin />} />
         
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute requiredRole="SUPERADMIN"><UserList /></ProtectedRoute>} />

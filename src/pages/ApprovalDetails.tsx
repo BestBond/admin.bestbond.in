@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
@@ -38,35 +39,41 @@ const ApprovalDetails = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    const fetchRequestDetail = async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axios.get<RedemptionDetail>(
-          `${import.meta.env.VITE_API_URL}/admin/redemptions/${requestId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setRequest(res.data);
-      } catch (error) {
-        console.error("FETCH DETAIL ERROR", error);
-        let msg = "Could not load this approval.";
-        if (axios.isAxiosError(error)) {
-          const data = error.response?.data as { message?: string | string[] } | undefined;
-          const m = data?.message;
-          msg = Array.isArray(m) ? m.join(", ") : (m ?? error.message);
+  const fetchRequestDetail = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!requestId) return;
+    if (!opts?.silent) setLoading(true);
+    setLoadError(null);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await axios.get<RedemptionDetail>(
+        `${import.meta.env.VITE_API_URL}/admin/redemptions/${requestId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
-        setLoadError(msg);
-        setRequest(null);
-      } finally {
-        setLoading(false);
+      );
+      setRequest(res.data);
+    } catch (error) {
+      console.error("FETCH DETAIL ERROR", error);
+      let msg = "Could not load this approval.";
+      if (axios.isAxiosError(error)) {
+        const data = error.response?.data as { message?: string | string[] } | undefined;
+        const m = data?.message;
+        msg = Array.isArray(m) ? m.join(", ") : (m ?? error.message);
       }
-    };
-    fetchRequestDetail();
+      setLoadError(msg);
+      setRequest(null);
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
   }, [requestId]);
+
+  useEffect(() => {
+    void fetchRequestDetail();
+  }, [fetchRequestDetail]);
+
+  useRefetchOnDocumentVisible(() => {
+    void fetchRequestDetail({ silent: true });
+  });
 
   const handleAction = async (action: 'approve' | 'reject') => {
     if (!request) return;

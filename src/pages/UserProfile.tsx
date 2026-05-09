@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
@@ -16,22 +17,29 @@ const UserProfile = () => {
   const [suspensionReason, setSuspensionReason] = useState("");
   const [isSuspending, setIsSuspending] = useState(false);
 
-  useEffect(() => {
-    const fetchUserDetail = async () => {
-      try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(res.data);
-      } catch (error) {
-        console.error("FETCH USER DETAIL ERROR", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUserDetail();
+  const fetchUserDetail = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!userId) return;
+    if (!opts?.silent) setLoading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(res.data);
+    } catch (error) {
+      console.error("FETCH USER DETAIL ERROR", error);
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
   }, [userId]);
+
+  useEffect(() => {
+    void fetchUserDetail();
+  }, [fetchUserDetail]);
+
+  useRefetchOnDocumentVisible(() => {
+    void fetchUserDetail({ silent: true });
+  });
 
   const handleSuspendSubmit = async () => {
     if (!suspensionReason || !user) return;
@@ -123,7 +131,7 @@ const UserProfile = () => {
                 <div>
                   <h2 className="text-3xl font-black text-[#1E2633] mt-3 font-bricolage">{user.fullName}</h2>
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-normal text-primary">{user.profession || 'Painter'}</span>
+                    <span className="text-base font-normal text-primary">{user.profession || '—'}</span>
                   </div>
                 </div>
               </div>

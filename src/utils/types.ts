@@ -27,6 +27,8 @@ transactions: any[];
 export interface DashboardData {
   pendingApprovalsCount: number;
   pendingOpsAdminApprovalsCount: number;
+  totalCouponsIssued: number;
+  totalCouponsReceived: number;
 
   pointsIssued: {
     totalLast7Days: number;

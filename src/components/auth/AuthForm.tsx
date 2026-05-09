@@ -1,6 +1,7 @@
 // components/auth/AuthForm.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import InputField from "../ui/InputField";
 import Button from "../ui/Button";
 import OtpInput from "../ui/OtpInput";
@@ -13,7 +14,16 @@ const AuthForm = () => {
   const [step, setStep] = useState<"request" | "verify">("request");
   const [isAdminType, setIsAdminType] = useState<"super" | "management">("super");
   const [otpValue, setOtpValue] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [bootstrapAllowed, setBootstrapAllowed] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/auth/superadmin/bootstrap-available`)
+      .then((r) => setBootstrapAllowed(r.data?.allowed === true))
+      .catch(() => setBootstrapAllowed(false));
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -37,33 +47,41 @@ const AuthForm = () => {
             }
           );
 
+          if (res.status === 201 || res.status === 200) {
+            toast.success("OTP Sent Successfully");
 
-          if (res.status === 201) {
-            toast.success("OTP Sent Successfully")
-
-            // Auto-fill OTP if it's returned (dev mode)
             if (res.data && res.data.devCode) {
-              setOtpValue(res.data.devCode);
+              setOtpValue(String(res.data.devCode));
             }
+            setAdminPassword("");
             setStep("verify");
           }
         } catch (error) {
           console.error("REQUEST ERROR ", error);
           let errorMessage = "Failed to send OTP";
           if (axios.isAxiosError(error)) {
-            errorMessage = error.response?.data?.message || errorMessage;
+            const m = error.response?.data?.message;
+            errorMessage = Array.isArray(m) ? m.join(" ") : m ?? errorMessage;
           }
-            toast.error(errorMessage)
+          toast.error(errorMessage);
         }
       } else {
+        if (isAdminType === "super" && adminPassword.trim().length < 8) {
+          toast.error("Enter your account password (min 8 characters).");
+          return;
+        }
         try {
+          const body: Record<string, string> = {
+            countryCode: values.countryCode,
+            phone: values.phone,
+            code: otpValue,
+          };
+          if (isAdminType === "super") {
+            body.password = adminPassword.trim();
+          }
           const res = await axios.post(
             `${import.meta.env.VITE_API_URL}/auth/admin/otp/login`,
-            {
-              countryCode: values.countryCode,
-              phone: values.phone,
-              code: otpValue,
-            },
+            body,
             {
               headers: {
                 "Content-Type": "application/json",
@@ -71,20 +89,23 @@ const AuthForm = () => {
             }
           );
 
-          if (res.status === 201) {
-            toast.success("Login Successful")
-            localStorage.setItem('accessToken', res?.data?.accessToken);
-            localStorage.setItem('userRole', JSON.stringify(res?.data?.roles || []));
-            navigate('/dashboard');
+          if (res.status === 201 || res.status === 200) {
+            toast.success("Login Successful");
+            localStorage.setItem("accessToken", res?.data?.accessToken);
+            localStorage.setItem(
+              "userRole",
+              JSON.stringify(res?.data?.roles || [])
+            );
+            navigate("/dashboard");
           }
         } catch (error) {
           console.error("VERIFY ERROR ", error);
-          let errorMessage = "Invalid OTP";
+          let errorMessage = "Login failed";
           if (axios.isAxiosError(error)) {
-            errorMessage = error.response?.data?.message || errorMessage;
+            const m = error.response?.data?.message;
+            errorMessage = Array.isArray(m) ? m.join(" ") : m ?? errorMessage;
           }
-          toast.error(errorMessage)
-
+          toast.error(errorMessage);
         }
       }
     },
@@ -104,7 +125,9 @@ const AuthForm = () => {
           <p className="text-text-primary text-[16px] font-medium tracking-wide">
             {step === "request"
               ? "Verify and Sign In to assess your rewards."
-              : "Enter the OTP sent to your mobile number."}
+              : isAdminType === "super"
+                ? "Enter the OTP and your account password."
+                : "Enter the OTP sent to your mobile number (Ops Admin — password not required)."}
           </p>
         </div>
 
@@ -116,7 +139,13 @@ const AuthForm = () => {
               type="tel"
               name="phone"
               value={formik.values.phone}
-              onChange={formik.handleChange}
+              inputMode="numeric"
+              maxLength={10}
+              autoComplete="tel"
+              onChange={(e) => {
+                const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                formik.setFieldValue("phone", digitsOnly);
+              }}
             />
           ) : (
             <div className="space-y-4">
@@ -130,8 +159,19 @@ const AuthForm = () => {
                   onChange={(val) => setOtpValue(val)}
                 />
               </div>
+              {isAdminType === "super" ? (
+                <InputField
+                  label="Account password"
+                  placeholder="Min 8 characters"
+                  type="password"
+                  name="adminPassword"
+                  autoComplete="current-password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                />
+              ) : null}
               <p className="text-sm text-center text-text-secondary">
-                Didn't receive code?{" "}
+                Didn&apos;t receive code?{" "}
                 <span
                   onClick={() => setStep("request")}
                   className="text-brand-orange font-bold cursor-pointer hover:underline"
@@ -151,12 +191,28 @@ const AuthForm = () => {
           {step === "request" && (
             <button
               type="button"
-              onClick={() => setIsAdminType(isAdminType === "super" ? "management" : "super")}
+              onClick={() =>
+                setIsAdminType(isAdminType === "super" ? "management" : "super")
+              }
               className="w-full py-4 rounded-full border-2 border-brand-orange text-brand-orange font-bold text-lg transition-all hover:bg-brand-orange/5"
             >
-              {isAdminType === "super" ? "Management Login" : "Super Admin Login"}
+              {isAdminType === "super"
+                ? "Management Login"
+                : "Super Admin Login"}
             </button>
           )}
+
+          {step === "request" && bootstrapAllowed ? (
+            <p className="text-center text-sm text-text-secondary">
+              New environment?{" "}
+              <Link
+                to="/bootstrap-superadmin"
+                className="text-brand-orange font-bold hover:underline"
+              >
+                First-time Super Admin setup
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdSearch } from "react-icons/md";
@@ -33,7 +34,15 @@ const UserList = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const professions = ["all", "Contractor", "Painter", "Dealer", "10,000 Pts"];
+  useRefetchOnDocumentVisible(() => {
+    void fetchUsers();
+  });
+
+  const professionFilters = [
+    { value: "all", label: "All" },
+    { value: "Contractor/Painter", label: "Contractor / Painter" },
+    { value: "Dealer", label: "Dealer" },
+  ] as const;
 
 
   return (
@@ -71,17 +80,17 @@ const UserList = () => {
 
             {/* Profession Filters */}
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {professions.map((p) => (
+              {professionFilters.map(({ value, label }) => (
                 <button
-                  key={p}
-                  onClick={() => setProfessionFilter(p)}
+                  key={value}
+                  onClick={() => setProfessionFilter(value)}
                   className={`px-8 py-3 rounded-full font-bricolage text-base font-semibold transition-all whitespace-nowrap shadow-sm border ${
-                    professionFilter === p 
+                    professionFilter === value
                       ? "bg-text-primary text-white border-text-primary" 
                       : "bg-white text-text-primary border-border hover:bg-text-primary/10"
                   }`}
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {label}
                 </button>
               ))}
             </div>
