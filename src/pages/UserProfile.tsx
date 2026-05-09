@@ -6,12 +6,22 @@ import Header from "../components/layout/Header";
 import { MdBlock } from "react-icons/md";
 import axios from "axios";
 import Swal from "sweetalert2";
-import type { User } from "../utils/types";
+import type { AdminUserDetail } from "../utils/types";
+
+function canSuspendAccounts(): boolean {
+  try {
+    const raw = localStorage.getItem("userPermissions");
+    const p = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(p) && p.includes("rbac.manage");
+  } catch {
+    return false;
+  }
+}
 
 const UserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [suspensionReason, setSuspensionReason] = useState("");
@@ -91,6 +101,10 @@ const UserProfile = () => {
 
   if (!user) return null;
 
+  const displayLabel = user.displayName || user.fullName?.trim() || "User";
+  const isActive = user.status === "ACTIVE";
+  const showSuspend = canSuspendAccounts();
+
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
       <Sidebar />
@@ -118,29 +132,33 @@ const UserProfile = () => {
                 <div className="flex flex-col items-center justify-center">
                   <div className="w-28 h-28 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-md">
                     <img
-                      src={`https://ui-avatars.com/api/?name=${user.fullName}&background=random&color=fff`}
-                      alt={user.fullName}
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayLabel)}&background=random&color=fff`}
+                      alt={displayLabel}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="flex items-center gap-2 mt-4 bg-green-50 px-4 py-1 rounded-full w-fit">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[8px] font-medium text-green-500 uppercase tracking-widest">STATUS: {user.isActive ? "ACTIVE" : "SUSPENDED"}</span>
+                  <div className={`flex items-center gap-2 mt-4 px-4 py-1 rounded-full w-fit ${isActive ? "bg-green-50" : "bg-red-50"}`}>
+                    <div className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
+                    <span className={`text-[8px] font-medium uppercase tracking-widest ${isActive ? "text-green-500" : "text-red-500"}`}>STATUS: {user.status}</span>
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-black text-[#1E2633] mt-3 font-bricolage">{user.fullName}</h2>
+                  <h2 className="text-3xl font-black text-[#1E2633] mt-3 font-bricolage">{displayLabel}</h2>
                   <div className="flex items-center gap-2">
                     <span className="text-base font-normal text-primary">{user.profession || '—'}</span>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={handleSuspend}
-                className="w-14 h-14 text-primary cursor-pointer transition-all"
-              >
-                <MdBlock className="text-3xl" />
-              </button>
+              {showSuspend ? (
+                <button
+                  type="button"
+                  onClick={handleSuspend}
+                  className="w-14 h-14 text-primary cursor-pointer transition-all"
+                  aria-label="Suspend account"
+                >
+                  <MdBlock className="text-3xl" />
+                </button>
+              ) : null}
             </div>
 
             {/* Balance Card */}
@@ -175,7 +193,7 @@ const UserProfile = () => {
               <div className="p-10 grid grid-cols-1 gap-10">
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">MOBILE NUMBER</p>
-                  <p className="text-xl font-bold text-[#1E2633] font-bricolage">{user.phone}</p>
+                  <p className="text-xl font-bold text-[#1E2633] font-bricolage">{user.phone ?? "—"}</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">ADDRESS</p>
@@ -188,13 +206,18 @@ const UserProfile = () => {
 
             {/* Footer Actions */}
             <div className="flex items-center justify-between pt-4 pb-12">
-              <button
-                onClick={handleSuspend}
-                className="flex items-center gap-3 text-primary font-bold hover:opacity-80 transition-opacity"
-              >
-                <MdBlock className="text-2xl" />
-                <span>Suspend Account</span>
-              </button>
+              {showSuspend ? (
+                <button
+                  type="button"
+                  onClick={handleSuspend}
+                  className="flex items-center gap-3 text-primary font-bold hover:opacity-80 transition-opacity"
+                >
+                  <MdBlock className="text-2xl" />
+                  <span>Suspend Account</span>
+                </button>
+              ) : (
+                <span />
+              )}
 
               <button
                 onClick={() => navigate(`/users/transactions/${user.id}`)}

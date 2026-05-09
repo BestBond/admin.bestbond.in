@@ -8,23 +8,32 @@ import { MdContentCopy } from "react-icons/md";
 
 const CouponPreview = () => {
 const [data , setData] = useState<any>(null)
-    // const navigate = useNavigate();
     const { batchId } = useParams();
 
     useEffect(() => {
         async function fetchListBatchCoupon(){
+            if (!batchId) return;
             try {
                 const token = localStorage.getItem("accessToken");
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/coupons/batches/${batchId}?take=50&offset=0`, {
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setData(res.data)
+                const cached = JSON.parse(localStorage.getItem("couponData") || "{}");
+                const meta =
+                  cached && typeof cached === "object" && cached.batchId === batchId
+                    ? cached
+                    : null;
+                setData({
+                  ...res.data,
+                  quantity: meta?.quantity ?? res.data?.items?.length,
+                  points: meta?.points ?? res.data?.items?.[0]?.points,
+                });
             } catch (error) {
                 console.error("FETCH BATCH COUPON ERROR", error);
             }
         }
-        fetchListBatchCoupon();
-    }, []);
+        void fetchListBatchCoupon();
+    }, [batchId]);
 
 
     const handleCopy = (code: string) => {

@@ -100,6 +100,10 @@ export default function BootstrapSuperAdmin() {
           "userRole",
           JSON.stringify(res.data?.roles || []),
         );
+        localStorage.setItem(
+          "userPermissions",
+          JSON.stringify(res.data?.permissions ?? []),
+        );
         toast.success("Super Admin created.");
         navigate("/dashboard");
       } else {

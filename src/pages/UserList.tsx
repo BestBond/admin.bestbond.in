@@ -5,11 +5,11 @@ import Header from "../components/layout/Header";
 import { MdSearch } from "react-icons/md";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import type { User } from "../utils/types";
+import type { AdminUserListItem } from "../utils/types";
 
 const UserList = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [professionFilter, setProfessionFilter] = useState("all");
@@ -119,7 +119,7 @@ const UserList = () => {
                         </div>
                         <div>
                           <p className="text-lg font-bold text-[#1E2633] group-hover:text-primary transition-colors font-bricolage">{user.name}</p>
-                          <p className="text-sm font-medium text-gray-400">{user.profession}</p>
+                          <p className="text-sm font-medium text-gray-400">{user.profession ?? "—"}</p>
                         </div>
                       </div>
                       <div className="text-right">

@@ -33,12 +33,17 @@ const AuthForm = () => {
 
     onSubmit: async (values) => {
       if (step === "request") {
+        const phoneDigits = String(values.phone).replace(/\D/g, "").slice(0, 10);
+        if (phoneDigits.length !== 10) {
+          toast.error("Enter a valid 10-digit mobile number.");
+          return;
+        }
         try {
           const res = await axios.post(
             `${import.meta.env.VITE_API_URL}/auth/otp/request`,
             {
-              countryCode: values.countryCode,
-              phone: values.phone,
+              countryCode: values.countryCode.trim(),
+              phone: phoneDigits,
             },
             {
               headers: {
@@ -71,9 +76,14 @@ const AuthForm = () => {
           return;
         }
         try {
+          const phoneDigits = String(values.phone).replace(/\D/g, "").slice(0, 10);
+          if (phoneDigits.length !== 10 || otpValue.length !== 6) {
+            toast.error("Enter a valid mobile number and 6-digit OTP.");
+            return;
+          }
           const body: Record<string, string> = {
-            countryCode: values.countryCode,
-            phone: values.phone,
+            countryCode: values.countryCode.trim(),
+            phone: phoneDigits,
             code: otpValue,
           };
           if (isAdminType === "super") {
@@ -95,6 +105,10 @@ const AuthForm = () => {
             localStorage.setItem(
               "userRole",
               JSON.stringify(res?.data?.roles || [])
+            );
+            localStorage.setItem(
+              "userPermissions",
+              JSON.stringify(res?.data?.permissions ?? []),
             );
             navigate("/dashboard");
           }

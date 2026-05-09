@@ -5,38 +5,48 @@ import { MdSecurity, MdNotifications, MdLogout } from "react-icons/md";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BiPhone } from "react-icons/bi";
+import type { MeProfileResponse } from "../utils/types";
+
+function staffRoleLabel(roles: string[]): string {
+  const upper = roles.map((r) => String(r).toUpperCase());
+  if (upper.includes("SUPERADMIN")) return "Super Admin";
+  if (upper.includes("OPERATIONAL_ADMIN")) return "Operational Admin";
+  if (roles.length === 0) return "Staff";
+  return roles.join(", ");
+}
 
 interface AdminProfile {
   fullName: string;
   email: string;
   phone: string;
-  role: string;
+  chipLabel: string;
   avatar?: string;
-  empId?: string;
-  profession?: string;
-  
 }
 
 const AccountManagement = () => {
-  const [profile, setProfile] = useState<AdminProfile>({
-    fullName: "Jamie Barnes",
-    email: "admin.central@nexus-corp.com",
-    phone: "+1 202-555-0156",
-    role: "SUPER ADMIN",
-    empId: "EMP-ID: 99284-SA"
-  });
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("accessToken");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/me/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await axios.get<MeProfileResponse>(
+          `${import.meta.env.VITE_API_URL}/users/me/profile`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const d = res.data;
+        const rolesLabel = staffRoleLabel(d.roles ?? []);
+        const displayName =
+          d.fullName?.trim() || d.email.split("@")[0] || "Admin";
+        setProfile({
+          fullName: displayName,
+          email: d.email,
+          phone: d.phone ?? "—",
+          chipLabel: d.profession?.trim() || rolesLabel,
         });
-        if (res.data) {
-          setProfile(res.data);
-        }
       } catch (error) {
         console.error("FETCH PROFILE ERROR", error);
       }
@@ -46,8 +56,21 @@ const AccountManagement = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userPermissions");
     navigate("/login");
   };
+
+  if (!profile) {
+    return (
+      <div className="flex h-screen bg-[#F8F9FA]">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E2633]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
@@ -88,7 +111,7 @@ const AccountManagement = () => {
               <div className="space-y-4">
                 <h2 className="text-5xl font-black text-[#1E2633] tracking-tight font-bricolage">{profile?.fullName}</h2>
                 <div className="inline-block bg-[#FFF8F3] px-6 py-2 rounded-full border border-[#FFE7D6]">
-                  <p className="text-xs font-bold text-[#F26522] tracking-[0.2em] uppercase font-bricolage">{profile?.profession}</p>
+                  <p className="text-xs font-bold text-[#F26522] tracking-[0.2em] uppercase font-bricolage">{profile.chipLabel}</p>
                 </div>
               </div>
 
