@@ -12,6 +12,7 @@ import ApprovalList from "./pages/ApprovalList"
 import ApprovalDetails from "./pages/ApprovalDetails"
 import CouponPreview from "./pages/CouponPreview"
 import CouponExport from "./pages/CouponExport"
+import Registration from "./pages/Registration"
 
 const ProtectedRoute = ({ children, requiredRole }: { children: any, requiredRole?: string }) => {
   const token = localStorage.getItem('accessToken');
@@ -36,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<SignUp />} />
+        <Route path="/register" element={<Registration />} />
         
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute requiredRole="SUPERADMIN"><UserList /></ProtectedRoute>} />

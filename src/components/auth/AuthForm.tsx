@@ -20,7 +20,15 @@ const AuthForm = () => {
       countryCode: "+91",
       phone: "",
     },
-
+    validate: (values) => {
+      const errors: any = {};
+      if (!values.phone) {
+        errors.phone = "Mobile number is required";
+      } else if (!/^[0-9]{10}$/.test(values.phone)) {
+        errors.phone = "Enter a valid 10-digit number";
+      }
+      return errors;
+    },
     onSubmit: async (values) => {
       if (step === "request") {
         try {
@@ -107,6 +115,9 @@ const AuthForm = () => {
               name="phone"
               value={formik.values.phone}
               onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.errors.phone}
+              touched={formik.touched.phone}
             />
           ) : (
             <div className="space-y-4">
@@ -139,13 +150,22 @@ const AuthForm = () => {
           </Button>
 
           {step === "request" && (
-            <button
-              type="button"
-              onClick={() => setIsAdminType(isAdminType === "super" ? "management" : "super")}
-              className="w-full py-4 rounded-full border-2 border-brand-orange text-brand-orange font-bold text-lg transition-all hover:bg-brand-orange/5"
-            >
-              {isAdminType === "super" ? "Management Login" : "Super Admin Login"}
-            </button>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setIsAdminType(isAdminType === "super" ? "management" : "super")}
+                className="flex-1 py-4 rounded-full border-2 border-brand-orange text-brand-orange font-bold text-lg transition-all hover:bg-brand-orange/5"
+              >
+                {isAdminType === "super" ? "Management Login" : "Super Admin Login"}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/register")}
+                className="flex-1 py-4 rounded-full bg-brand-orange text-white font-bold text-lg transition-all hover:bg-brand-orange-dark shadow-[0_10px_25px_rgba(242,101,34,0.25)] hover:scale-105"
+              >
+                Ops admin registration
+              </button>
+            </div>
           )}
         </div>
 
