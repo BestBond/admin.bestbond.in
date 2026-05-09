@@ -5,6 +5,7 @@ import InputField from "../components/ui/InputField";
 import Button from "../components/ui/Button";
 import OtpInput from "../components/ui/OtpInput";
 import { toast, ToastContainer } from "react-toastify";
+import { normalizeLocalPhoneDigits } from "../utils/phone";
 
 /**
  * First Super Admin only: GET /auth/superadmin/bootstrap-available must be true.
@@ -30,9 +31,11 @@ export default function BootstrapSuperAdmin() {
   }, []);
 
   const requestOtp = async () => {
-    const digits = phone.replace(/\D/g, "").slice(0, 10);
+    const digits = normalizeLocalPhoneDigits(phone, countryCode);
     if (digits.length !== 10) {
-      toast.error("Enter a valid 10-digit mobile number.");
+      toast.error(
+        "Enter your 10-digit mobile (without +91 — it is already the default).",
+      );
       return;
     }
     try {
@@ -58,7 +61,11 @@ export default function BootstrapSuperAdmin() {
   };
 
   const submitSignup = async () => {
-    const digits = phone.replace(/\D/g, "").slice(0, 10);
+    const digits = normalizeLocalPhoneDigits(phone, countryCode);
+    if (digits.length !== 10) {
+      toast.error("Enter a valid 10-digit mobile number.");
+      return;
+    }
     if (otp.length !== 6) {
       toast.error("Enter the 6-digit OTP.");
       return;
@@ -174,7 +181,9 @@ export default function BootstrapSuperAdmin() {
                 autoComplete="tel"
                 value={phone}
                 onChange={(e) =>
-                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  setPhone(
+                    normalizeLocalPhoneDigits(e.target.value, countryCode),
+                  )
                 }
               />
               <Button type="button" onClick={requestOtp}>
