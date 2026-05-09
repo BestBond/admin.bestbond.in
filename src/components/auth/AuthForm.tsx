@@ -88,8 +88,19 @@ const AuthForm = () => {
           toast.error(errorMessage);
         }
       } else {
-        if (isAdminType === "super" && adminPassword.trim().length < 8) {
+        const pw = adminPassword.trim();
+        if (isAdminType === "super" && pw.length < 8) {
           toast.error("Enter your account password (min 8 characters).");
+          return;
+        }
+        if (
+          isAdminType === "management" &&
+          pw.length > 0 &&
+          pw.length < 8
+        ) {
+          toast.error(
+            "Super Admin passwords must be at least 8 characters (or leave blank for Ops Admin).",
+          );
           return;
         }
         try {
@@ -106,8 +117,10 @@ const AuthForm = () => {
             phone: phoneDigits,
             code: otpValue,
           };
-          if (isAdminType === "super") {
-            body.password = adminPassword.trim();
+          // Backend requires password for Super Admin; optional for Ops. Send whenever
+          // filled so login works even if the wrong tab was selected.
+          if (pw.length >= 8) {
+            body.password = pw;
           }
           const res = await axios.post(
             `${import.meta.env.VITE_API_URL}/auth/admin/otp/login`,
@@ -176,9 +189,7 @@ const AuthForm = () => {
           <p className="text-text-primary text-[16px] font-medium tracking-wide">
             {step === "request"
               ? "Verify and Sign In to assess your rewards."
-              : isAdminType === "super"
-                ? "Super Admin: enter OTP and your account password (8+ characters)."
-                : "Ops Admin: enter OTP only — no account password."}
+              : "Enter your OTP. Super Admin accounts must also enter the account password below (min 8 characters). Ops Admin can leave password blank."}
           </p>
         </div>
 
@@ -242,25 +253,26 @@ const AuthForm = () => {
                   onChange={(val) => setOtpValue(val)}
                 />
               </div>
-              {isAdminType === "super" ? (
-                <div className="space-y-2 rounded-2xl border border-border bg-white/80 p-4">
-                  <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
-                    Account password
-                  </label>
-                  <p className="text-xs text-text-secondary -mt-1 mb-1">
-                    The password you set for this Super Admin account.
-                  </p>
-                  <input
-                    name="adminPassword"
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Min 8 characters"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border outline-none focus:ring-1 focus:ring-brand-orange text-sm placeholder:text-text-muted"
-                  />
-                </div>
-              ) : null}
+              <div className="space-y-2 rounded-2xl border-2 border-brand-orange/25 bg-[#FFF8F3] p-4">
+                <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
+                  Account password
+                </label>
+                <p className="text-xs text-text-secondary -mt-1 mb-1 leading-relaxed">
+                  <span className="font-semibold text-text-primary">Super Admin:</span>{" "}
+                  required — same password you use on the mobile app.{" "}
+                  <span className="font-semibold text-text-primary">Ops Admin:</span>{" "}
+                  leave empty.
+                </p>
+                <input
+                  name="adminPassword"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Super Admin: min 8 characters"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-brand-orange text-sm placeholder:text-text-muted bg-white"
+                />
+              </div>
               <p className="text-sm text-center text-text-secondary">
                 Didn&apos;t receive code?{" "}
                 <span
