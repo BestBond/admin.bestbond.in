@@ -3,12 +3,12 @@ import Header from "../components/layout/Header";
 import { BiDownload } from "react-icons/bi";
 import { MdArrowBack } from "react-icons/md";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import { useState } from "react";
 
 async function exportErrorMessage(err: unknown): Promise<string> {
-  if (!axios.isAxiosError(err) || !err.response?.data) {
+  if (!isAxiosError(err) || !err.response?.data) {
     return String((err as Error)?.message ?? "Export failed");
   }
   const data = err.response.data;
@@ -62,14 +62,10 @@ const CouponExport = () => {
 
     setDownloading(true);
     try {
-      // Match mobile: GET .../coupons/batches/:batchId/export.pdf with Bearer only (binary body).
-      const res = await axios.get<Blob>(
-        `${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
+      const res = await api.get<Blob>(
+        `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
         {
-          responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          responseType: "blob"
         }
       );
 

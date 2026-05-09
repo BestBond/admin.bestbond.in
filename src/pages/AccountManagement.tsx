@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdSecurity, MdNotifications, MdLogout } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import { BiPhone } from "react-icons/bi";
 
@@ -30,10 +30,7 @@ const AccountManagement = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/me/profile`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get("/users/me/profile");
         if (res.data) {
           setProfile(res.data);
         }

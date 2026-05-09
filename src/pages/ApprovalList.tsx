@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdOutlineAccountCircle } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 
 interface RedemptionRequest {
   id: string;
@@ -26,9 +26,7 @@ const ApprovalList = () => {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/redemptions?status=PENDING&take=20&offset=0&sort=NEWEST`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/admin/redemptions?status=PENDING&take=20&offset=0&sort=NEWEST", {
         params: { 
           sort: sortBy, 
           flagged: flaggedOnly,

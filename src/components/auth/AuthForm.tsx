@@ -5,7 +5,7 @@ import InputField from "../ui/InputField";
 import Button from "../ui/Button";
 import OtpInput from "../ui/OtpInput";
 import { useFormik } from "formik";
-import axios from "axios";
+import api, { isAxiosError } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 
@@ -24,16 +24,11 @@ const AuthForm = () => {
     onSubmit: async (values) => {
       if (step === "request") {
         try {
-          const res = await axios.post(
-            `${import.meta.env.VITE_API_URL}/auth/otp/request`,
+          const res = await api.post(
+            "/auth/otp/request",
             {
               countryCode: values.countryCode,
               phone: values.phone,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
             }
           );
 
@@ -50,24 +45,19 @@ const AuthForm = () => {
         } catch (error) {
           console.error("REQUEST ERROR ", error);
           let errorMessage = "Failed to send OTP";
-          if (axios.isAxiosError(error)) {
+          if (isAxiosError(error)) {
             errorMessage = error.response?.data?.message || errorMessage;
           }
             toast.error(errorMessage)
         }
       } else {
         try {
-          const res = await axios.post(
-            `${import.meta.env.VITE_API_URL}/auth/admin/otp/login`,
+          const res = await api.post(
+            "/auth/admin/otp/login",
             {
               countryCode: values.countryCode,
               phone: values.phone,
               code: otpValue,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
             }
           );
 
@@ -80,7 +70,7 @@ const AuthForm = () => {
         } catch (error) {
           console.error("VERIFY ERROR ", error);
           let errorMessage = "Invalid OTP";
-          if (axios.isAxiosError(error)) {
+          if (isAxiosError(error)) {
             errorMessage = error.response?.data?.message || errorMessage;
           }
           toast.error(errorMessage)

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdSearch } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import type { User } from "../utils/types";
 
@@ -16,9 +16,7 @@ const UserList = () => {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/admin/users", {
         params: { q: searchTerm, profession: professionFilter === "all" ? undefined : professionFilter }
       });
       setUsers(res.data.items || []);

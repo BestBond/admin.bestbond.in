@@ -1,7 +1,7 @@
 import Sidebar from "../components/layout/Sidebar"
 import Header from "../components/layout/Header"
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import type { DashboardData } from "../utils/types";
 import { Link } from "react-router-dom";
 
@@ -15,10 +15,7 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/admin/dashboard");
       setDashboardData(res.data);
     } catch (error) {
       console.error("FETCH DASHBOARD DATA ERROR", error);

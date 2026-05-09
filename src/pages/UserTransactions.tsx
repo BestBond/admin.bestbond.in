@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdHistory } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import type { User, Transaction } from "../utils/types";
 
 const UserTransactions = () => {
@@ -17,14 +17,9 @@ const UserTransactions = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
         const [userRes, transRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }),
-          axios.get(`${import.meta.env.VITE_API_URL}/transactions/me?period=THIS_MONTH&limit=20`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+          api.get(`/admin/users/${userId}`),
+          api.get("/transactions/me?period=THIS_MONTH&limit=20")
         ]);
         setUser(userRes.data);
         setTransactions(transRes.data);

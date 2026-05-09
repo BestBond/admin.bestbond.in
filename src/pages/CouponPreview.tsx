@@ -1,7 +1,7 @@
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { Link,  useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdContentCopy } from "react-icons/md";
@@ -14,10 +14,7 @@ const [data , setData] = useState<any>(null)
     useEffect(() => {
         async function fetchListBatchCoupon(){
             try {
-                const token = localStorage.getItem("accessToken");
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/coupons/batches/${batchId}?take=50&offset=0`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const res = await api.get(`/coupons/batches/${batchId}?take=50&offset=0`);
                 setData(res.data)
             } catch (error) {
                 console.error("FETCH BATCH COUPON ERROR", error);
