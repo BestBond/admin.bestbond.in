@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import InputField from "../ui/InputField";
-import Button from "../ui/Button";
 import OtpInput from "../ui/OtpInput";
 import api, { isAxiosError } from "../../utils/api";
 

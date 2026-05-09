@@ -13,6 +13,7 @@ import ApprovalDetails from "./pages/ApprovalDetails"
 import CouponPreview from "./pages/CouponPreview"
 import CouponExport from "./pages/CouponExport"
 import Registration from "./pages/Registration"
+import OpsApprovalList from "./pages/OpsApprovalList"
 
 const ProtectedRoute = ({ children, requiredRole }: { children: any, requiredRole?: string }) => {
   const token = localStorage.getItem('accessToken');
@@ -51,6 +52,7 @@ function App() {
         <Route path="/coupon-generation/export/:batchId" element={<ProtectedRoute requiredRole="SUPERADMIN"><CouponExport /></ProtectedRoute>} />
         <Route path="/approvals" element={<ProtectedRoute><ApprovalList /></ProtectedRoute>} />
         <Route path="/approvals/details/:requestId" element={<ProtectedRoute><ApprovalDetails /></ProtectedRoute>} />
+        <Route path="/ops-approvals" element={<ProtectedRoute requiredRole="SUPERADMIN"><OpsApprovalList /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )

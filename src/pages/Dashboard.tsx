@@ -119,6 +119,53 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
             </div>
           </div>
 
+          {/* Pending Ops Admin Approvals Card */}
+          {isSuperAdmin && (dashboardData?.pendingOpsAdminApprovalsCount || 0) > 0 && (
+            <div className="relative rounded-[32px] p-10 overflow-hidden shadow-sm border border-gray-100 bg-[#1E2633]" >
+              <div className="absolute right-0 bottom-0 w-[80%] h-full opacity-10 pointer-events-none">
+                <svg viewBox="0 0 500 200" className="w-full h-full">
+                  <path
+                    d="M0,120 C80,180 180,40 260,110 C340,180 420,40 500,120"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="5"
+                    strokeOpacity="0.2"
+                  />
+                </svg>
+              </div>
+
+              <div className="relative z-10 flex justify-between items-end">
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
+                      ADMINISTRATION QUEUE
+                    </span>
+                    <h3 className="text-[32px] font-bold text-white mt-2 font-bricolage">
+                      Ops Admin Approvals
+                    </h3>
+                    <p className="text-gray-400 text-sm mt-1 font-medium">
+                      Authorize new operational staff accounts for the system
+                    </p>
+                  </div>
+                  <div className="flex items-end gap-3 text-white">
+                    <span className="text-[72px] leading-none font-black font-bricolage">
+                      {dashboardData?.pendingOpsAdminApprovalsCount}
+                    </span>
+                    <span className="text-lg font-semibold mb-2 font-bricolage opacity-60">
+                      registrations
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  to="/ops-approvals"
+                  className="bg-white hover:bg-gray-100 text-[#1E2633] px-8 py-3 rounded-full font-bold text-sm flex items-center gap-2 transition-all shadow-[0_10px_25px_rgba(255,255,255,0.1)] hover:scale-105"
+                >
+                  Approve Staff →
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Key Metrics Section */}
           <div className="space-y-6">
             <h3 className="text-xl font-bold text-gray-400">Key Metrics</h3>
