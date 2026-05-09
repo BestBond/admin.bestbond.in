@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+/* =========================
+   🎨 DESIGN TOKENS
+   ========================= */
+
+@theme {
+  /* Brand */
+  --color-primary: #EA580C;
+  --color-primary-hover: #C2410C;
+
+  /* Orange Shades */
+  --color-orange: #F97316;
+  --color-orange-light: #FFF7ED;
+  --color-orange-dark: #A73A00;
+  --color-brand-orange: #F97316;
+  --color-brand-orange-light: #FFF7ED;
+  --color-brand-orange-dark: #A73A00;
+
+  /* Text */
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #4B5563;
+  --color-text-secondary-dark: #374151;
+  --color-text-muted: #E1E6F0;
+
+  /* Secondary for text-secondary, etc. */
+  --color-secondary: #6B7280;
+
+  /* Background */
+  --color-bg-white: #FFFFFF;
+  --color-bg-offwhite: #F9FAFB;
+
+  /* Border */
+  --color-border: #E1E6F0;
+  --color-border-light: #F1F5F9;
+
+
+  /* heading font  */
+    --font-bricolage: "Bricolage Grotesque", sans-serif;
+
+}
+
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+}
+
+
+:root {
+  /* These are still available for usage in other CSS if needed */
+  --color-primary: #EA580C;
+  --color-primary-hover: #C2410C;
+  --color-orange: #F97316;
+  --color-orange-light: #FFF7ED;
+  --color-orange-dark: #A73A00;
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #4B5563;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #A6AAB3;
+  --color-bg-white: #FFFFFF;
+  --color-bg-offwhite: #F9FAFB;
+  --color-border: #E1E6F0;
+
+}
