@@ -125,7 +125,7 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
           {/* Key Metrics Section */}
           <div className="space-y-6">
             <h3 className="text-xl font-bold text-gray-400">Key Metrics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* Total Points Issued */}
               <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-4">
                 <div className="w-12 h-12 bg-text-muted/5 rounded-full flex items-center justify-center text-2xl">
@@ -165,6 +165,36 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
                     {Math.abs(dashboardData?.pointsRedeemed?.percentVsPriorWeek || 0)}%
                     {(dashboardData?.pointsRedeemed?.percentVsPriorWeek || 0) >= 0 ? " increase" : " decrease"} in last week
                   </span>
+                </div>
+              </div>
+
+              {/* Coupons Card */}
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-4">
+                <div className="w-12 h-12 bg-text-muted/5 rounded-full flex items-center justify-center text-2xl">
+                  <img src="/coupons.svg" alt="coupons" className="w-6 h-6" />
+                </div>
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">COUPONS</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ISSUED</p>
+                      <p className="text-2xl font-black text-[#1E2633] mt-1 font-bricolage">
+                        {formatNumber(dashboardData?.coupons?.totalIssued || 1500)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">REDEEMED</p>
+                      <p className="text-2xl font-black text-[#1E2633] mt-1 font-bricolage">
+                        {formatNumber(dashboardData?.coupons?.totalRedeemed || 850)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#F26522] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${((dashboardData?.coupons?.totalRedeemed || 850) / (dashboardData?.coupons?.totalIssued || 1500) * 100)}%` }}
+                  />
                 </div>
               </div>
             </div>
