@@ -5,6 +5,7 @@ import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisibl
 import axios from "axios";
 import type { DashboardData } from "../utils/types";
 import { Link } from "react-router-dom";
+import { seesFullRedemptionApprovalQueue } from "../utils/adminPermissions";
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,7 @@ const Dashboard = () => {
   const userRoleStr = localStorage.getItem('userRole');
   const userRoles = userRoleStr ? JSON.parse(userRoleStr) : [];
 const isSuperAdmin = userRoles.includes('SUPERADMIN');
+  const fullRedemptionQueue = seesFullRedemptionApprovalQueue();
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -97,11 +99,15 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
                   </span>
 
                   <h3 className="text-[32px] font-bold text-[#1E2633] mt-2 font-bricolage">
-                    Dealer redemption queue
+                    {fullRedemptionQueue
+                      ? "Redemption approval queue"
+                      : "Dealer redemption queue"}
                   </h3>
 
                   <p className="text-gray-500 text-sm mt-1">
-                    Dealer store redemptions awaiting review
+                    {fullRedemptionQueue
+                      ? "Contractor / painter app and dealer store requests awaiting review"
+                      : "Dealer store redemptions awaiting review"}
                   </p>
                 </div>
 

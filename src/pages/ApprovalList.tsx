@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
+import { seesFullRedemptionApprovalQueue } from "../utils/adminPermissions";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
@@ -18,21 +19,6 @@ interface RedemptionRequest {
   channel?: string;
 }
 
-/** Full admin (backend `isFullAdminUser`) sees app + dealer queues; ops only dealer. */
-function redemptionListChannelParam(): string | undefined {
-  try {
-    const raw = localStorage.getItem("userPermissions");
-    const perms = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(perms)) return "DEALER_STORE";
-    if (perms.includes("users.manage") || perms.includes("rbac.manage")) {
-      return undefined;
-    }
-    return "DEALER_STORE";
-  } catch {
-    return "DEALER_STORE";
-  }
-}
-
 const ApprovalList = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<RedemptionRequest[]>([]);
@@ -40,7 +26,10 @@ const ApprovalList = () => {
   const [sortBy, setSortBy] = useState("HIGH_VALUE");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
 
-  const listChannelFilter = useMemo(() => redemptionListChannelParam(), []);
+  const listChannelFilter = useMemo(
+    () => (seesFullRedemptionApprovalQueue() ? undefined : "DEALER_STORE"),
+    [],
+  );
   const fullRedemptionQueue = listChannelFilter === undefined;
 
   const fetchRequests = useCallback(async () => {
