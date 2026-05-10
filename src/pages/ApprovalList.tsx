@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
@@ -15,6 +15,22 @@ interface RedemptionRequest {
   status: string;
   createdAt: string;
   flagged?: boolean;
+  channel?: string;
+}
+
+/** Full admin (backend `isFullAdminUser`) sees app + dealer queues; ops only dealer. */
+function redemptionListChannelParam(): string | undefined {
+  try {
+    const raw = localStorage.getItem("userPermissions");
+    const perms = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(perms)) return "DEALER_STORE";
+    if (perms.includes("users.manage") || perms.includes("rbac.manage")) {
+      return undefined;
+    }
+    return "DEALER_STORE";
+  } catch {
+    return "DEALER_STORE";
+  }
 }
 
 const ApprovalList = () => {
@@ -24,17 +40,21 @@ const ApprovalList = () => {
   const [sortBy, setSortBy] = useState("HIGH_VALUE");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
 
+  const listChannelFilter = useMemo(() => redemptionListChannelParam(), []);
+  const fullRedemptionQueue = listChannelFilter === undefined;
+
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
+      const channel = listChannelFilter;
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/redemptions`, {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           sort: sortBy,
           flagged: flaggedOnly ? 'true' : undefined,
           status: 'PROCESSING',
-          channel: 'DEALER_STORE',
+          ...(channel ? { channel } : {}),
           take: 20,
           offset: 0,
         },
@@ -45,7 +65,7 @@ const ApprovalList = () => {
     } finally {
       setLoading(false);
     }
-  }, [sortBy, flaggedOnly]);
+  }, [sortBy, flaggedOnly, listChannelFilter]);
 
   useEffect(() => {
     fetchRequests();
@@ -73,14 +93,20 @@ const ApprovalList = () => {
                   <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">Dealer redemption approvals</h1>
+              <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">
+                {fullRedemptionQueue ? "Reward redemption approvals" : "Dealer redemption approvals"}
+              </h1>
             </div>
 
             {/* Title Section */}
             <div>
-              <h2 className="text-4xl font-bold text-text-primary tracking-tight font-bricolage">Pending dealer redemptions</h2>
+              <h2 className="text-4xl font-bold text-text-primary tracking-tight font-bricolage">
+                {fullRedemptionQueue ? "Pending redemption requests" : "Pending dealer redemptions"}
+              </h2>
               <p className="text-secondary text-base mt-3 font-medium max-w-2xl">
-                Dealer points are debited when store staff records the redemption; approve here before dispatch.
+                {fullRedemptionQueue
+                  ? "Contractor and painter app requests and dealer store redemptions await your review before dispatch."
+                  : "Dealer points are debited when store staff records the redemption; approve here before dispatch."}
               </p>
             </div>
 
@@ -135,8 +161,14 @@ const ApprovalList = () => {
                             <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center text-4xl group-hover:bg-orange-50 transition-colors shadow-inner overflow-hidden">
                               <img src={`https://ui-avatars.com/api/?name=${req.itemName}&background=random&color=fff`} alt="" className="w-full h-full object-cover opacity-80" />
                             </div>
-                            <div className="absolute -top-3 -left-3 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">
+                            <div className="absolute -top-3 -left-3 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100 shadow-sm flex items-center gap-2">
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.code}</span>
+                              {fullRedemptionQueue && req.channel === "CUSTOMER_APP" ? (
+                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-orange-100 px-2 py-0.5 rounded-md">App</span>
+                              ) : null}
+                              {fullRedemptionQueue && req.channel === "DEALER_STORE" ? (
+                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded-md">Dealer</span>
+                              ) : null}
                             </div>
                             {req.flagged && (
                               <div className="absolute -top-3 -right-3 bg-red-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-pulse">
