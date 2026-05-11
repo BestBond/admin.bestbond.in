@@ -4,10 +4,47 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Link,  useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MdContentCopy } from "react-icons/md";
+import { MdClose, MdContentCopy } from "react-icons/md";
+import GeneratedCouponCard from "../components/coupons/GeneratedCouponCard";
+
+type Coupon = {
+    id: string | number;
+    code: string;
+    points?: number;
+};
+
+type CouponBatchData = {
+    items?: Coupon[];
+    quantity?: number;
+    points?: number;
+    [key: string]: unknown;
+};
+
+type CouponMeta = {
+    batchId: string;
+    quantity?: number;
+    points?: number;
+};
+
+const getCachedCouponMeta = (batchId: string): CouponMeta | null => {
+    try {
+        const cached = JSON.parse(localStorage.getItem("couponData") || "{}") as unknown;
+        if (!cached || typeof cached !== "object") return null;
+
+        const meta = cached as Partial<CouponMeta>;
+        return meta.batchId === batchId ? {
+            batchId,
+            quantity: meta.quantity,
+            points: meta.points,
+        } : null;
+    } catch {
+        return null;
+    }
+};
 
 const CouponPreview = () => {
-const [data , setData] = useState<any>(null)
+const [data , setData] = useState<CouponBatchData | null>(null)
+const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
     const { batchId } = useParams();
 
     useEffect(() => {
@@ -15,14 +52,10 @@ const [data , setData] = useState<any>(null)
             if (!batchId) return;
             try {
                 const token = localStorage.getItem("accessToken");
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`, {
+                const res = await axios.get<CouponBatchData>(`${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                const cached = JSON.parse(localStorage.getItem("couponData") || "{}");
-                const meta =
-                  cached && typeof cached === "object" && cached.batchId === batchId
-                    ? cached
-                    : null;
+                const meta = getCachedCouponMeta(batchId);
                 setData({
                   ...res.data,
                   quantity: meta?.quantity ?? res.data?.items?.length,
@@ -78,9 +111,10 @@ const [data , setData] = useState<any>(null)
                                 {/* Scrollable List */}
                                 <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
 
-                                    {data?.items?.map((coupon : any) => (
+                                    {data?.items?.map((coupon) => (
                                         <div
                                             key={coupon.id}
+                                            onClick={() => setSelectedCoupon(coupon)}
                                             className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
                                         >
                                             {/* Left Section */}
@@ -104,7 +138,11 @@ const [data , setData] = useState<any>(null)
 
                                             {/* Copy Button */}
                                             <button
-                                                onClick={() => handleCopy(coupon.code)}
+                                                type="button"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleCopy(coupon.code);
+                                                }}
                                                 className="p-2 rounded-xl bg-gray-50 hover:bg-orange-50 text-gray-400 hover:text-[#F26522] transition-all active:scale-90"
                                             >
                                                 <MdContentCopy size={18} />
@@ -134,6 +172,33 @@ const [data , setData] = useState<any>(null)
                     </div>
                 </div>
             </div>
+
+            {selectedCoupon && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+                    onClick={() => setSelectedCoupon(null)}
+                >
+                    <div
+                        className="relative w-full max-w-[840px] shadow-sm"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setSelectedCoupon(null)}
+                            className="absolute right-13 -top-5 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-lg transition-all hover:bg-gray-100 hover:text-text-primary"
+                            aria-label="Close coupon preview"
+                        >
+                            <MdClose size={22} />
+                        </button>
+
+                        <GeneratedCouponCard
+                            couponId={String(selectedCoupon.id ?? selectedCoupon.code)}
+                            couponCode={selectedCoupon.code}
+                            points={Number(selectedCoupon.points ?? data?.points ?? 0)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

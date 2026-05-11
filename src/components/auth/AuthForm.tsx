@@ -10,9 +10,12 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../../utils/phone";
+import { BsEye, BsEyeSlashFill } from "react-icons/bs";
 
 const AuthForm = () => {
   const [step, setStep] = useState<"request" | "verify">("request");
+  const [showPassword, setShowPassword] = useState(false);
+
   /** Match mobile: default Ops; Super shows OTP + account password. */
   const [isAdminType, setIsAdminType] = useState<"super" | "management">(
     "management",
@@ -77,7 +80,7 @@ const AuthForm = () => {
             if (!error.response) {
               errorMessage =
                 error.code === "ERR_NETWORK" ||
-                error.message === "Network Error"
+                  error.message === "Network Error"
                   ? "Cannot reach the API from the browser. On production, set CORS_ORIGINS on the server to include this site (e.g. https://admin.bestbond.in) and redeploy."
                   : errorMessage;
             } else {
@@ -191,22 +194,20 @@ const AuthForm = () => {
               setIsAdminType("management");
               setAdminPassword("");
             }}
-            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
-              isAdminType === "management"
+            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${isAdminType === "management"
                 ? "border-brand-orange bg-[#FFF7F0] text-brand-orange"
                 : "border-border text-text-secondary bg-white"
-            }`}
+              }`}
           >
             Ops Admin
           </button>
           <button
             type="button"
             onClick={() => setIsAdminType("super")}
-            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
-              isAdminType === "super"
+            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${isAdminType === "super"
                 ? "border-brand-orange bg-[#FFF7F0] text-brand-orange"
                 : "border-border text-text-secondary bg-white"
-            }`}
+              }`}
           >
             Super Admin
           </button>
@@ -251,59 +252,69 @@ const AuthForm = () => {
                   <p className="text-xs text-text-secondary -mt-1 mb-1 leading-relaxed">
                     Same password you use on the mobile app (min 8 characters).
                   </p>
+                  <div className="relative">
                   <input
                     name="adminPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="Min 8 characters"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-border outline-none focus:ring-2 focus:ring-brand-orange text-sm placeholder:text-text-muted bg-white"
+                    className="w-full px-4 py-3 pr-12 rounded-xl border border-border outline-none focus:ring-2 focus:ring-brand-orange text-sm placeholder:text-text-muted bg-white"
                   />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
+                  >
+                    {showPassword ? <BsEyeSlashFill size={18} /> : <BsEye size={18} />}
+                  </button>
                 </div>
-              ) : null}
-              <p className="text-sm text-center text-text-secondary">
-                Didn&apos;t receive code?{" "}
-                <span
-                  onClick={() => setStep("request")}
-                  className="text-brand-orange font-bold cursor-pointer hover:underline"
-                >
-                  Resend
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="py-4 space-y-4">
-          <Button type="submit">
-            {step === "request" ? "Get OTP" : "Verify OTP"}
-          </Button>
-
-          {step === "request" && bootstrapAllowed ? (
-            <p className="text-center text-sm text-text-secondary">
-              New environment?{" "}
-              <Link
-                to="/bootstrap-superadmin"
-                className="text-brand-orange font-bold hover:underline"
-              >
-                First-time Super Admin setup
-              </Link>
-            </p>
+                </div>
           ) : null}
+          <p className="text-sm text-center text-text-secondary">
+            Didn&apos;t receive code?{" "}
+            <span
+              onClick={() => setStep("request")}
+              className="text-brand-orange font-bold cursor-pointer hover:underline"
+            >
+              Resend
+            </span>
+          </p>
         </div>
+          )}
+      </div>
 
-        <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">
-          By logging in, you agree to our{" "}
-          <span className="text-brand-orange hover:underline cursor-pointer">
-            Terms of Service
-          </span>{" "}
-          and{" "}
-          <span className="text-brand-orange hover:underline cursor-pointer">
-            Privacy Policy
-          </span>
-        </p>
-      </form>
+      <div className="py-4 space-y-4">
+        <Button type="submit">
+          {step === "request" ? "Get OTP" : "Verify OTP"}
+        </Button>
+
+        {step === "request" && bootstrapAllowed ? (
+          <p className="text-center text-sm text-text-secondary">
+            New environment?{" "}
+            <Link
+              to="/bootstrap-superadmin"
+              className="text-brand-orange font-bold hover:underline"
+            >
+              First-time Super Admin setup
+            </Link>
+          </p>
+        ) : null}
+      </div>
+
+      <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">
+        By logging in, you agree to our{" "}
+        <span className="text-brand-orange hover:underline cursor-pointer">
+          Terms of Service
+        </span>{" "}
+        and{" "}
+        <span className="text-brand-orange hover:underline cursor-pointer">
+          Privacy Policy
+        </span>
+      </p>
+    </form >
     </>
   );
 };

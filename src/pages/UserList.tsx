@@ -55,12 +55,12 @@ const UserList = () => {
           <div className="space-y-8">
             {/* Header with Back Button */}
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
               <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">User Management</h1>
@@ -69,7 +69,7 @@ const UserList = () => {
             {/* Search Bar */}
             <div className="relative">
               <MdSearch className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
-              <input 
+              <input
                 type="text"
                 placeholder="Search by Name or Mobile Number"
                 value={searchTerm}
@@ -84,11 +84,10 @@ const UserList = () => {
                 <button
                   key={value}
                   onClick={() => setProfessionFilter(value)}
-                  className={`px-8 py-3 rounded-full font-bricolage text-base font-semibold transition-all whitespace-nowrap shadow-sm border ${
-                    professionFilter === value
-                      ? "bg-text-primary text-white border-text-primary" 
+                  className={`px-8 py-3 rounded-full font-bricolage text-base font-semibold transition-all whitespace-nowrap shadow-sm border ${professionFilter === value
+                      ? "bg-text-primary text-white border-text-primary"
                       : "bg-white text-text-primary border-border hover:bg-text-primary/10"
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -103,31 +102,33 @@ const UserList = () => {
                 </div>
               ) : (
                 <>
-                  {users.map((user) => (
-                    <div 
-                      key={user.id} 
-                      onClick={() => navigate(`/users/profile/${user.id}`)}
-                      className="rounded-[24px] p-6 hover:bg-border transition-all cursor-pointer  flex items-center justify-between group "
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
-                          <img 
-                            src={`https://ui-avatars.com/api/?name=${user.name}&background=random&color=fff`} 
-                            alt={user.name} 
-                            className="w-full h-full object-cover"
-                          />
+                  {users
+                    ?.filter((user) => user.profession !== "Super Admin")
+                    ?.map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => navigate(`/users/profile/${user.id}`)}
+                        className="rounded-[24px] p-6 hover:bg-border transition-all cursor-pointer  flex items-center justify-between group "
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
+                            <img
+                              src={`https://ui-avatars.com/api/?name=${user.name}&background=random&color=fff`}
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-[#1E2633] group-hover:text-primary transition-colors font-bricolage">{user.name}</p>
+                            <p className="text-sm font-medium text-gray-400">{user.profession ?? "—"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-lg font-bold text-[#1E2633] group-hover:text-primary transition-colors font-bricolage">{user.name}</p>
-                          <p className="text-sm font-medium text-gray-400">{user.profession ?? "—"}</p>
+                        <div className="text-right">
+                          <p className="text-2xl font-black text-[#F26522]">{user.walletBalance}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WALLET BALANCE</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-[#F26522]">{user.walletBalance}</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">WALLET BALANCE</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                   {users.length === 0 && (
                     <div className="bg-white rounded-[32px] p-20 text-center text-gray-400 border border-dashed border-gray-200">
                       <p className="text-lg font-medium italic">No users found matching your criteria.</p>

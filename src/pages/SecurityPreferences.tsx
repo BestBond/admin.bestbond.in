@@ -3,6 +3,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
+import { BsEye, BsEyeSlashFill } from "react-icons/bs";
 
 const SecurityPreferences = () => {
   const [passwords, setPasswords] = useState({
@@ -12,6 +13,10 @@ const SecurityPreferences = () => {
   });
   const [loading, setLoading] = useState(false);
   const [quickLoginPin, setQuickLoginPin] = useState(true);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const navigate = useNavigate();
 
   const handleUpdatePassword = async () => {
@@ -77,33 +82,61 @@ const SecurityPreferences = () => {
                   <div className="space-y-8 relative">
                     <div className="space-y-5">
                       <label className="text-[12px] font-bold text-secondary uppercase tracking-wide ml-2">Current Password</label>
+                      <div className="relative">
                       <input 
-                        type="password"
+                        type={showCurrentPassword ? "text" : "password"}
                         value={passwords.current}
                         onChange={(e) => setPasswords({...passwords, current: e.target.value})}
                         className="w-full bg-white border border-gray-100 rounded-[24px] px-8 py-4 mt-3 text-text-primary outline-none focus:ring-4 focus:ring-[#F26522]/5 transition-all text-base"
-                        placeholder="••••••••••••"
+                        placeholder="Enter current password"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-7 top-10 -translate-y-1/2 text-gray-500 hover:text-black"
+                      >
+                        {showCurrentPassword ? <BsEyeSlashFill size={18} /> : <BsEye size={18} />}
+                      </button>
+                      </div>
+
                     </div>
                     <div className="space-y-3">
                       <label className="text-[12px] font-bold text-secondary uppercase tracking-wide ml-2">New Password</label>
+                      <div className="relative">
                       <input 
-                        type="password"
+                        type={showNewPassword ? "text" : "password"}
                         value={passwords.new}
                         onChange={(e) => setPasswords({...passwords, new: e.target.value})}
                         className="w-full bg-white border border-gray-100 rounded-[24px] px-8 py-4 mt-3 text-text-primary outline-none focus:ring-4 focus:ring-[#F26522]/5 transition-all text-base"
-                        placeholder="••••••••••••"
+                        placeholder="Enter new password"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-7 top-10 -translate-y-1/2 text-gray-500 hover:text-black"
+                      >
+                        {showNewPassword ? <BsEyeSlashFill size={18} /> : <BsEye size={18} />}
+                      </button>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       <label className="text-[12px] font-bold text-secondary uppercase tracking-wide ml-2">Confirm New Password</label>
+                      <div className="relative">
                       <input 
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         value={passwords.confirm}
                         onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
                         className="w-full bg-white border border-gray-100 rounded-[24px] px-8 py-4 mt-3 text-text-primary outline-none focus:ring-4 focus:ring-[#F26522]/5 transition-all text-base"
-                        placeholder="••••••••••••"
+                        placeholder="Confirm new password"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-7 top-10 -translate-y-1/2 text-gray-500 hover:text-black"
+                      >
+                        {showConfirmPassword ? <BsEyeSlashFill size={18} /> : <BsEye size={18} />}
+                      </button>
+                      </div>
                     </div>
                     <div className="pt-4 flex justify-center">
                       <button 
@@ -122,7 +155,7 @@ const SecurityPreferences = () => {
             </div>
 
             {/* Efficiency Section */}
-            <div className="space-y-8 pt-6 pb-12">
+            {/* <div className="space-y-8 pt-6 pb-12">
               <div className="max-w-2xl">
                 <h3 className="text-xl font-bold text-text-primary tracking-tight">Efficiency</h3>
                 <p className="text-secondary text-base mt-2 font-medium">Streamline your workflow with biometric-ready authentication shortcuts.</p>
@@ -142,7 +175,7 @@ const SecurityPreferences = () => {
                   <div className={`absolute top-1.5 w-5 h-5 bg-white rounded-full transition-all shadow-md ${quickLoginPin ? 'left-9' : 'left-1.5'}`}></div>
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

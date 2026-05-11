@@ -25,6 +25,7 @@ const ApprovalList = () => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState("HIGH_VALUE");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("PENDING_REVIEW");
 
   const listChannelFilter = useMemo(
     () => (seesFullRedemptionApprovalQueue() ? undefined : "DEALER_STORE"),
@@ -42,7 +43,9 @@ const ApprovalList = () => {
         params: {
           sort: sortBy,
           flagged: flaggedOnly ? 'true' : undefined,
-          status: 'PROCESSING',
+          status: statusFilter === "OUT_FOR_DELIVERY"
+            ? "OUT_FOR_DELIVERY"
+            : "PROCESSING",
           ...(channel ? { channel } : {}),
           take: 20,
           offset: 0,
@@ -74,12 +77,12 @@ const ApprovalList = () => {
           <div className="space-y-8">
             {/* Header with Back Button */}
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
               <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">
@@ -99,12 +102,44 @@ const ApprovalList = () => {
               </p>
             </div>
 
+            <div className="flex items-center gap-4 justify-between">
+              <div className="flex items-center gap-4">
+              <button
+                onClick={() => setStatusFilter("PENDING_REVIEW")}
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all ${statusFilter === "PENDING_REVIEW"
+                  ? "bg-[#F26522] text-white"
+                  : "bg-gray-100 text-gray-500"
+                  }`}
+              >
+                Pending Review
+              </button>
+
+              <button
+                onClick={() => setStatusFilter("OUT_FOR_DELIVERY")}
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all ${statusFilter === "OUT_FOR_DELIVERY"
+                  ? "bg-[#F26522] text-white"
+                  : "bg-gray-100 text-gray-500"
+                  }`}
+              >
+                Out for delivery
+              </button>
+              </div>
+                          <button
+              onClick={() => navigate("/dealer-redemption/create")}
+              className="bg-[#0F172A] text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-all"
+            >
+              + Record dealer redemption
+            </button>
+            </div>
+
+
+
             {/* Filters Bar */}
             <div className="flex justify-between items-center bg-white rounded-[32px] p-6 shadow-sm border border-gray-50">
               <div className="flex items-center gap-6 px-2">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">SORT BY</span>
                 <div className="relative">
-                  <select 
+                  <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="appearance-none bg-gray-50 border border-gray-100 rounded-full py-2 px-6 pr-10 text-sm font-bold text-[#1E2633] outline-none cursor-pointer hover:bg-gray-100 transition-all"
@@ -114,14 +149,14 @@ const ApprovalList = () => {
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M1 1L5 5L9 1" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M1 1L5 5L9 1" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 pr-4 border-l border-gray-100 pl-8">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Flagged Requests</span>
-                <button 
+                <button
                   onClick={() => setFlaggedOnly(!flaggedOnly)}
                   className={`w-12 h-6 rounded-full transition-all relative ${flaggedOnly ? 'bg-[#F26522]' : 'bg-gray-200'}`}
                 >
@@ -131,16 +166,16 @@ const ApprovalList = () => {
             </div>
 
             {/* Request Cards */}
-            <div className="space-y-6">
+            <div className="space-y-3">
               {loading ? (
-                <div className="flex justify-center py-20">
+                <div className="flex justify-center py-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E2633]"></div>
                 </div>
               ) : (
                 <>
                   {requests.map((req) => (
-                    <div 
-                      key={req.id} 
+                    <div
+                      key={req.id}
                       onClick={() => navigate(`/approvals/details/${req.id}`)}
                       className="bg-white rounded-[40px] p-10 shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden"
                     >
@@ -189,7 +224,7 @@ const ApprovalList = () => {
                         <div className="flex items-center gap-2 text-[#1E2633] text-sm font-bold group-hover:translate-x-1 transition-transform">
                           Review
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                       </div>

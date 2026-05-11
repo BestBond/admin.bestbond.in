@@ -147,12 +147,12 @@ const CouponExport = () => {
 
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold">Total Coupons</p>
-                  <p className="text-3xl font-bold text-[#1E2633]">{data?.totalCoupons}</p>
+                  <p className="text-2xl font-bold text-[#1E2633]">{data?.quantity}</p>
                 </div>
 
                 <div>
                   <p className="text-xs text-orange-500 uppercase font-semibold">Total Value</p>
-                  <p className="text-2xl font-bold text-orange-600">{data?.totalPoints} Pts</p>
+                  <p className="text-3xl font-bold text-orange-600 tracking-wide">{data?.quantity * data?.points} Pts</p>
                 </div>
 
               </div>
