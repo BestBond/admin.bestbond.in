@@ -10,9 +10,9 @@
 #   - Put VITE_API_URL in .env.production, or
 #   - export VITE_API_URL=https://api.bestbond.in ./deploy.sh
 #
-# If nginx document root is NOT .../dist (e.g. you want files at WEB_ROOT root):
-#   WEB_ROOT=/var/www/admin.bestbond.in ./deploy.sh
-#   (rsync copies dist/* into WEB_ROOT; nginx root = WEB_ROOT)
+# Optional: copy dist/ elsewhere (nginx root = that folder). WEB_ROOT must NOT be the same as
+# the clone directory — rsync --delete would wipe src/, node_modules/, and break dist/ (vanished files).
+# Good examples: WEB_ROOT=$ROOT/public   or   WEB_ROOT=/var/www/admin-html
 #
 # Optional: RUN_GIT_PULL=1 ./deploy.sh
 #
@@ -62,6 +62,15 @@ fi
 WEB_ROOT="${WEB_ROOT:-}"
 if [[ -n "$WEB_ROOT" ]]; then
   mkdir -p "$WEB_ROOT"
+  root_p="$(cd "$ROOT" && pwd -P)"
+  web_p="$(cd "$WEB_ROOT" && pwd -P)"
+  if [[ "$web_p" == "$root_p" ]]; then
+    echo "ERROR: WEB_ROOT cannot equal the clone directory ($ROOT)."
+    echo "       rsync --delete into the repo root removes source files and causes 'file has vanished'."
+    echo "       Use nginx: root ${ROOT}/dist;  and run ./deploy.sh with no WEB_ROOT."
+    echo "       Or set WEB_ROOT to e.g. $ROOT/public or a sibling folder like /var/www/admin-html."
+    exit 1
+  fi
   echo "==> rsync dist/ → $WEB_ROOT/"
   rsync -a --delete "${ROOT}/dist/" "${WEB_ROOT}/"
   echo "==> Done. Nginx root should be: $WEB_ROOT"
