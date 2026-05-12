@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import InputField from "../ui/InputField";
@@ -13,6 +13,7 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
   const [isVerified, setIsVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const formik = useFormik({
     initialValues: {
@@ -87,6 +88,16 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
       }
     },
   });
+
+  useEffect(() => {
+    const pre = (location.state as { prefillPhone?: string } | null)?.prefillPhone;
+    const digits = pre?.replace(/\D/g, "").slice(0, 10);
+    if (digits?.length === 10) {
+      void formik.setFieldValue("phone", digits);
+    }
+    // One-shot prefill when navigating from login (Ops account missing).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleVerifyPhone = async () => {
     if (!formik.values.phone || formik.values.phone.length < 10) {

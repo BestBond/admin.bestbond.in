@@ -23,6 +23,8 @@ const AuthForm = () => {
   const [otpValue, setOtpValue] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [bootstrapAllowed, setBootstrapAllowed] = useState(false);
+  /** Ops login 401 — no staff user yet; same as mobile before OpsAdminSignUp. */
+  const [opsNoAccountHint, setOpsNoAccountHint] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,6 +73,7 @@ const AuthForm = () => {
               setOtpValue(String(res.data.devCode));
             }
             setAdminPassword("");
+            setOpsNoAccountHint(false);
             setStep("verify");
           }
         } catch (error) {
@@ -144,11 +147,36 @@ const AuthForm = () => {
               /password is required for super admin/i.test(raw)
             ) {
               setIsAdminType("super");
+              setOpsNoAccountHint(false);
               toast.info(
                 "This mobile number is a Super Admin account. Enter your password below.",
               );
               return;
             }
+            if (
+              error.response?.status === 403 &&
+              /waiting for super admin approval/i.test(raw)
+            ) {
+              setOpsNoAccountHint(false);
+              toast.info(
+                "This number is already registered as Ops Admin and is waiting for Super Admin approval. Try again after approval.",
+                { autoClose: 7000 },
+              );
+              return;
+            }
+            if (
+              isAdminType === "management" &&
+              error.response?.status === 401 &&
+              /management account not found/i.test(raw)
+            ) {
+              setOpsNoAccountHint(true);
+              toast.info(
+                "No Ops Admin account for this mobile yet. Use Ops admin registration to create one — a Super Admin must approve it before you can sign in (same as the mobile app).",
+                { autoClose: 9000 },
+              );
+              return;
+            }
+            setOpsNoAccountHint(false);
             errorMessage = Array.isArray(m) ? m.join(" ") : m ?? errorMessage;
           }
           toast.error(errorMessage);
@@ -183,6 +211,7 @@ const AuthForm = () => {
             onClick={() => {
               setIsAdminType("management");
               setAdminPassword("");
+              setOpsNoAccountHint(false);
             }}
             className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
               isAdminType === "management"
@@ -194,7 +223,10 @@ const AuthForm = () => {
           </button>
           <button
             type="button"
-            onClick={() => setIsAdminType("super")}
+            onClick={() => {
+              setIsAdminType("super");
+              setOpsNoAccountHint(false);
+            }}
             className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
               isAdminType === "super"
                 ? "border-brand-orange bg-[#FFF7F0] text-brand-orange"
@@ -274,12 +306,33 @@ const AuthForm = () => {
               <p className="text-sm text-center text-text-secondary">
                 Didn&apos;t receive code?{" "}
                 <span
-                  onClick={() => setStep("request")}
+                  onClick={() => {
+                    setOpsNoAccountHint(false);
+                    setStep("request");
+                  }}
                   className="text-brand-orange font-bold cursor-pointer hover:underline"
                 >
                   Resend
                 </span>
               </p>
+
+              {opsNoAccountHint && isAdminType === "management" ? (
+                <div className="rounded-2xl border-2 border-brand-orange/30 bg-[#FFF8F3] p-5 space-y-3">
+                  <p className="text-sm font-bold text-[#1E2633] leading-relaxed">
+                    This mobile number does not have an Ops Admin account yet.
+                    Register with the same number and OTP flow; after a Super Admin
+                    approves you, return here to sign in — matching the BestBond
+                    mobile management onboarding.
+                  </p>
+                  <Link
+                    to="/register"
+                    state={{ prefillPhone: formik.values.phone }}
+                    className="flex w-full items-center justify-center rounded-full bg-brand-orange py-3.5 text-center text-[15px] font-bold text-white shadow-md transition-opacity hover:opacity-95"
+                  >
+                    Create Ops Admin account
+                  </Link>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
