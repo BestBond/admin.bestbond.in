@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
+import { seesFullRedemptionApprovalQueue } from "../utils/adminPermissions";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
@@ -14,6 +16,7 @@ interface RedemptionRequest {
   status: string;
   createdAt: string;
   flagged?: boolean;
+  channel?: string;
 }
 
 const ApprovalList = () => {
@@ -22,16 +25,30 @@ const ApprovalList = () => {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState("HIGH_VALUE");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("PENDING_REVIEW");
+
+  const listChannelFilter = useMemo(
+    () => (seesFullRedemptionApprovalQueue() ? undefined : "DEALER_STORE"),
+    [],
+  );
+  const fullRedemptionQueue = listChannelFilter === undefined;
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get("/admin/redemptions?status=PENDING&take=20&offset=0&sort=NEWEST", {
-        params: { 
-          sort: sortBy, 
-          flagged: flaggedOnly,
-          status: 'PROCESSING'
-        }
+      const channel = listChannelFilter;
+      const res = await api.get("/admin/redemptions", {
+        params: {
+          sort: sortBy,
+          flagged: flaggedOnly ? "true" : undefined,
+          status:
+            statusFilter === "OUT_FOR_DELIVERY"
+              ? "OUT_FOR_DELIVERY"
+              : "PROCESSING",
+          ...(channel ? { channel } : {}),
+          take: 20,
+          offset: 0,
+        },
       });
       setRequests(res.data.items || []);
     } catch (error) {
@@ -39,11 +56,15 @@ const ApprovalList = () => {
     } finally {
       setLoading(false);
     }
-  }, [sortBy, flaggedOnly]);
+  }, [sortBy, flaggedOnly, listChannelFilter, statusFilter]);
 
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
+
+  useRefetchOnDocumentVisible(() => {
+    void fetchRequests();
+  });
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
@@ -55,31 +76,69 @@ const ApprovalList = () => {
           <div className="space-y-8">
             {/* Header with Back Button */}
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">Approval Request List</h1>
+              <h1 className="text-xl font-bold text-[#1E2633] font-bricolage">
+                {fullRedemptionQueue ? "Reward redemption approvals" : "Dealer redemption approvals"}
+              </h1>
             </div>
 
             {/* Title Section */}
             <div>
-              <h2 className="text-4xl font-bold text-text-primary tracking-tight font-bricolage">Pending Approvals</h2>
+              <h2 className="text-4xl font-bold text-text-primary tracking-tight font-bricolage">
+                {fullRedemptionQueue ? "Pending redemption requests" : "Pending dealer redemptions"}
+              </h2>
               <p className="text-secondary text-base mt-3 font-medium max-w-2xl">
-                Review and authorise high-value rewards for the loyalty program ecosystem
+                {fullRedemptionQueue
+                  ? "Contractor and painter app requests and dealer store redemptions await your review before dispatch."
+                  : "Dealer points are debited when store staff records the redemption; approve here before dispatch."}
               </p>
             </div>
+
+            <div className="flex items-center gap-4 justify-between">
+              <div className="flex items-center gap-4">
+              <button
+                onClick={() => setStatusFilter("PENDING_REVIEW")}
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all ${statusFilter === "PENDING_REVIEW"
+                  ? "bg-[#F26522] text-white"
+                  : "bg-gray-100 text-gray-500"
+                  }`}
+              >
+                Pending Review
+              </button>
+
+              <button
+                onClick={() => setStatusFilter("OUT_FOR_DELIVERY")}
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all ${statusFilter === "OUT_FOR_DELIVERY"
+                  ? "bg-[#F26522] text-white"
+                  : "bg-gray-100 text-gray-500"
+                  }`}
+              >
+                Out for delivery
+              </button>
+              </div>
+                          <button
+              onClick={() => navigate("/dealer-redemption/create")}
+              className="bg-[#0F172A] text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-all"
+            >
+              + Record dealer redemption
+            </button>
+            </div>
+
+
 
             {/* Filters Bar */}
             <div className="flex justify-between items-center bg-white rounded-[32px] p-6 shadow-sm border border-gray-50">
               <div className="flex items-center gap-6 px-2">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">SORT BY</span>
                 <div className="relative">
-                  <select 
+                  <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="appearance-none bg-gray-50 border border-gray-100 rounded-full py-2 px-6 pr-10 text-sm font-bold text-[#1E2633] outline-none cursor-pointer hover:bg-gray-100 transition-all"
@@ -89,14 +148,14 @@ const ApprovalList = () => {
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M1 1L5 5L9 1" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M1 1L5 5L9 1" stroke="#1E2633" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 pr-4 border-l border-gray-100 pl-8">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Flagged Requests</span>
-                <button 
+                <button
                   onClick={() => setFlaggedOnly(!flaggedOnly)}
                   className={`w-12 h-6 rounded-full transition-all relative ${flaggedOnly ? 'bg-[#F26522]' : 'bg-gray-200'}`}
                 >
@@ -106,16 +165,16 @@ const ApprovalList = () => {
             </div>
 
             {/* Request Cards */}
-            <div className="space-y-6">
+            <div className="space-y-3">
               {loading ? (
-                <div className="flex justify-center py-20">
+                <div className="flex justify-center py-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E2633]"></div>
                 </div>
               ) : (
                 <>
                   {requests.map((req) => (
-                    <div 
-                      key={req.id} 
+                    <div
+                      key={req.id}
                       onClick={() => navigate(`/approvals/details/${req.id}`)}
                       className="bg-white rounded-[40px] p-10 shadow-sm border border-gray-100 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden"
                     >
@@ -125,8 +184,14 @@ const ApprovalList = () => {
                             <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center text-4xl group-hover:bg-orange-50 transition-colors shadow-inner overflow-hidden">
                               <img src={`https://ui-avatars.com/api/?name=${req.itemName}&background=random&color=fff`} alt="" className="w-full h-full object-cover opacity-80" />
                             </div>
-                            <div className="absolute -top-3 -left-3 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100 shadow-sm">
+                            <div className="absolute -top-3 -left-3 bg-gray-50 px-4 py-1.5 rounded-full border border-gray-100 shadow-sm flex items-center gap-2">
                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.code}</span>
+                              {fullRedemptionQueue && req.channel === "CUSTOMER_APP" ? (
+                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-orange-100 px-2 py-0.5 rounded-md">App</span>
+                              ) : null}
+                              {fullRedemptionQueue && req.channel === "DEALER_STORE" ? (
+                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded-md">In-store</span>
+                              ) : null}
                             </div>
                             {req.flagged && (
                               <div className="absolute -top-3 -right-3 bg-red-500 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-pulse">
@@ -158,7 +223,7 @@ const ApprovalList = () => {
                         <div className="flex items-center gap-2 text-[#1E2633] text-sm font-bold group-hover:translate-x-1 transition-transform">
                           Review
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                       </div>

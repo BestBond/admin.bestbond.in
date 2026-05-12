@@ -2,8 +2,10 @@ import Sidebar from "../components/layout/Sidebar"
 import Header from "../components/layout/Header"
 import { useEffect, useState } from "react";
 import api from "../utils/api";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import type { DashboardData } from "../utils/types";
 import { Link } from "react-router-dom";
+import { seesFullRedemptionApprovalQueue } from "../utils/adminPermissions";
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +13,7 @@ const Dashboard = () => {
   const userRoleStr = localStorage.getItem('userRole');
   const userRoles = userRoleStr ? JSON.parse(userRoleStr) : [];
 const isSuperAdmin = userRoles.includes('SUPERADMIN');
+  const fullRedemptionQueue = seesFullRedemptionApprovalQueue();
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -27,6 +30,10 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useRefetchOnDocumentVisible(() => {
+    void fetchDashboardData();
+  });
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-IN').format(num);
@@ -89,11 +96,15 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
                   </span>
 
                   <h3 className="text-[32px] font-bold text-[#1E2633] mt-2 font-bricolage">
-                    Pending Approvals
+                    {fullRedemptionQueue
+                      ? "Redemption approval queue"
+                      : "Dealer redemption queue"}
                   </h3>
 
                   <p className="text-gray-500 text-sm mt-1">
-                    Requires validation for high-value reward redemptions
+                    {fullRedemptionQueue
+                      ? "Contractor / painter app and dealer store requests awaiting review"
+                      : "Dealer store redemptions awaiting review"}
                   </p>
                 </div>
 
@@ -114,7 +125,7 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
       font-semibold text-sm font-medium flex items-center gap-2 transition-all 
       shadow-[0_10px_25px_rgba(242,101,34,0.25)] hover:scale-105"
               >
-                Request Queue →
+                Open approval queue →
               </Link>
             </div>
           </div>
@@ -212,33 +223,29 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
                 </div>
               </div>
 
-              {/* Coupons Card */}
+              {/* Total coupons issued (codes generated) */}
               <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-4">
                 <div className="w-12 h-12 bg-text-muted/5 rounded-full flex items-center justify-center text-2xl">
-                  <img src="/coupons.svg" alt="coupons" className="w-6 h-6" />
+                  <img src="/qr_code_2_add.svg" alt="coupons issued" className="w-6 h-6" />
                 </div>
-                <div className="space-y-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">COUPONS</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ISSUED</p>
-                      <p className="text-2xl font-black text-[#1E2633] mt-1 font-bricolage">
-                        {formatNumber(dashboardData?.coupons?.totalIssued || 1500)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">REDEEMED</p>
-                      <p className="text-2xl font-black text-[#1E2633] mt-1 font-bricolage">
-                        {formatNumber(dashboardData?.coupons?.totalRedeemed || 850)}
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">TOTAL COUPONS ISSUED</p>
+                  <p className="text-4xl font-black text-[#1E2633] mt-2 font-bricolage">
+                    {formatNumber(dashboardData?.totalCouponsIssued ?? 0)}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-[#F26522] h-full rounded-full transition-all duration-500"
-                    style={{ width: `${((dashboardData?.coupons?.totalRedeemed || 850) / (dashboardData?.coupons?.totalIssued || 1500) * 100)}%` }}
-                  />
+              </div>
+
+              {/* Total coupons received (successful scans) */}
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-4">
+                <div className="w-12 h-12 bg-text-muted/5 rounded-full flex items-center justify-center text-2xl">
+                  <img src="/qr_code_scanner.svg" alt="coupons received" className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">TOTAL COUPONS RECEIVED</p>
+                  <p className="text-4xl font-black text-[#1E2633] mt-2 font-bricolage">
+                    {formatNumber(dashboardData?.totalCouponsReceived ?? 0)}
+                  </p>
                 </div>
               </div>
             </div>

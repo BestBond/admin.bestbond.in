@@ -1,11 +1,11 @@
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { BiDownload } from "react-icons/bi";
-import { MdArrowBack } from "react-icons/md";
+import { MdArrowBack, MdClose, MdPictureAsPdf } from "react-icons/md";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 async function exportErrorMessage(err: unknown): Promise<string> {
   if (!isAxiosError(err) || !err.response?.data) {
@@ -35,8 +35,71 @@ const CouponExport = () => {
   const navigate = useNavigate()
   const { batchId } = useParams();
   const [downloading, setDownloading] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
 
   const data = JSON.parse(localStorage.getItem("couponData") || "{}")
+
+  const closePdfPreview = useCallback(() => {
+    setPdfPreviewOpen(false);
+    setPdfPreviewUrl((prev) => {
+      if (prev) window.URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) window.URL.revokeObjectURL(pdfPreviewUrl);
+    };
+  }, [pdfPreviewUrl]);
+
+  const fetchBatchPdfBlob = async (): Promise<Blob> => {
+    const id = batchId?.trim();
+    if (!id) {
+      throw new Error("Batch id is missing. Please regenerate the batch and try again.");
+    }
+    const res = await api.get<Blob>(
+      `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
+      { responseType: "blob" },
+    );
+    return res.data instanceof Blob
+      ? res.data
+      : new Blob([res.data], { type: "application/pdf" });
+  };
+
+  const handleViewPdf = async () => {
+    const id = batchId?.trim();
+    if (!id) {
+      await Swal.fire({
+        title: "Preview failed",
+        text: "Batch id is missing. Please regenerate the batch and try again.",
+        icon: "error",
+      });
+      return;
+    }
+
+    setPdfPreviewLoading(true);
+    try {
+      const blob = await fetchBatchPdfBlob();
+      const url = window.URL.createObjectURL(blob);
+      setPdfPreviewUrl((prev) => {
+        if (prev) window.URL.revokeObjectURL(prev);
+        return url;
+      });
+      setPdfPreviewOpen(true);
+    } catch (error) {
+      const text = await exportErrorMessage(error);
+      await Swal.fire({
+        title: "Preview failed",
+        text,
+        icon: "error",
+      });
+    } finally {
+      setPdfPreviewLoading(false);
+    }
+  };
 
 
   const handleExportCoupons = async () => {
@@ -62,17 +125,7 @@ const CouponExport = () => {
 
     setDownloading(true);
     try {
-      const res = await api.get<Blob>(
-        `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
-        {
-          responseType: "blob"
-        }
-      );
-
-      const blob =
-        res.data instanceof Blob
-          ? res.data
-          : new Blob([res.data], { type: "application/pdf" });
+      const blob = await fetchBatchPdfBlob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -143,12 +196,12 @@ const CouponExport = () => {
 
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold">Total Coupons</p>
-                  <p className="text-3xl font-bold text-[#1E2633]">{data?.totalCoupons}</p>
+                  <p className="text-2xl font-bold text-[#1E2633]">{data?.quantity}</p>
                 </div>
 
                 <div>
                   <p className="text-xs text-orange-500 uppercase font-semibold">Total Value</p>
-                  <p className="text-2xl font-bold text-orange-600">{data?.totalPoints} Pts</p>
+                  <p className="text-3xl font-bold text-orange-600 tracking-wide">{data?.quantity * data?.points} Pts</p>
                 </div>
 
               </div>
@@ -173,16 +226,32 @@ const CouponExport = () => {
         </div>
       </div> */}
 
-            {/* Download Button */}
-            <button
-              type="button"
-              disabled={downloading}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-2 shadow-lg"
-              onClick={handleExportCoupons}
-            >
-              <BiDownload size={18} />
-              {downloading ? "Downloading…" : "Download"}
-            </button>
+            {/* View PDF + Download */}
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                disabled={pdfPreviewLoading || downloading}
+                className="w-full border-2 border-orange-500 bg-white py-4 text-orange-600 rounded-full font-semibold flex items-center justify-center gap-2 shadow-sm hover:bg-orange-50 disabled:opacity-60 transition-colors"
+                onClick={() => {
+                  void handleViewPdf();
+                }}
+              >
+                <MdPictureAsPdf size={22} />
+                {pdfPreviewLoading ? "Loading preview…" : "View PDF"}
+              </button>
+
+              <button
+                type="button"
+                disabled={downloading || pdfPreviewLoading}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-2 shadow-lg"
+                onClick={() => {
+                  void handleExportCoupons();
+                }}
+              >
+                <BiDownload size={18} />
+                {downloading ? "Downloading…" : "Download"}
+              </button>
+            </div>
           </div>
 
           {/* Cancel */}
@@ -194,6 +263,50 @@ const CouponExport = () => {
 
         </div>
       </div>
+
+      {pdfPreviewOpen && pdfPreviewUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pdf-preview-title"
+          onClick={closePdfPreview}
+        >
+          <div
+            className="flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
+              <h2 id="pdf-preview-title" className="text-base font-semibold text-[#1E2633] sm:text-lg">
+                Coupon batch preview
+              </h2>
+              <div className="flex items-center gap-2">
+                <a
+                  href={pdfPreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden rounded-full px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-50 sm:inline-block"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  type="button"
+                  onClick={closePdfPreview}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#1E2633]"
+                  aria-label="Close PDF preview"
+                >
+                  <MdClose size={24} />
+                </button>
+              </div>
+            </div>
+            <iframe
+              title="Coupon batch PDF preview"
+              src={pdfPreviewUrl}
+              className="min-h-0 w-full flex-1 border-0 bg-gray-100"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

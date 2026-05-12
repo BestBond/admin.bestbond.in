@@ -67,7 +67,7 @@ const CouponGeneration = () => {
         }
       );
 
-      if (res.status === 201) {
+      if (res.status >= 200 && res.status < 300) {
         localStorage.setItem("couponData", JSON.stringify(res?.data));
         navigate(`/coupon-generation/preview/${res?.data?.batchId}`);
 

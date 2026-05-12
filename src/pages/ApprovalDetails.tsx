@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisible";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
@@ -38,31 +39,42 @@ const ApprovalDetails = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    const fetchRequestDetail = async () => {
-      setLoading(true);
+  const fetchRequestDetail = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!requestId) return;
+      if (!opts?.silent) setLoading(true);
       setLoadError(null);
       try {
         const res = await api.get<RedemptionDetail>(
-          `/admin/redemptions/${requestId}`
+          `/admin/redemptions/${requestId}`,
         );
         setRequest(res.data);
       } catch (error) {
         console.error("FETCH DETAIL ERROR", error);
         let msg = "Could not load this approval.";
         if (isAxiosError(error)) {
-          const data = error.response?.data as { message?: string | string[] } | undefined;
+          const data = error.response?.data as
+            | { message?: string | string[] }
+            | undefined;
           const m = data?.message;
           msg = Array.isArray(m) ? m.join(", ") : (m ?? error.message);
         }
         setLoadError(msg);
         setRequest(null);
       } finally {
-        setLoading(false);
+        if (!opts?.silent) setLoading(false);
       }
-    };
-    fetchRequestDetail();
-  }, [requestId]);
+    },
+    [requestId],
+  );
+
+  useEffect(() => {
+    void fetchRequestDetail();
+  }, [fetchRequestDetail]);
+
+  useRefetchOnDocumentVisible(() => {
+    void fetchRequestDetail({ silent: true });
+  });
 
   const handleAction = async (action: 'approve' | 'reject') => {
     if (!request) return;

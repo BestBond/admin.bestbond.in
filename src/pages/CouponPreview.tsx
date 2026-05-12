@@ -4,24 +4,68 @@ import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { Link,  useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MdContentCopy } from "react-icons/md";
+import { MdClose, MdContentCopy } from "react-icons/md";
+import GeneratedCouponCard from "../components/coupons/GeneratedCouponCard";
+
+type Coupon = {
+    id: string | number;
+    code: string;
+    points?: number;
+};
+
+type CouponBatchData = {
+    items?: Coupon[];
+    quantity?: number;
+    points?: number;
+    [key: string]: unknown;
+};
+
+type CouponMeta = {
+    batchId: string;
+    quantity?: number;
+    points?: number;
+};
+
+const getCachedCouponMeta = (batchId: string): CouponMeta | null => {
+    try {
+        const cached = JSON.parse(localStorage.getItem("couponData") || "{}") as unknown;
+        if (!cached || typeof cached !== "object") return null;
+
+        const meta = cached as Partial<CouponMeta>;
+        return meta.batchId === batchId ? {
+            batchId,
+            quantity: meta.quantity,
+            points: meta.points,
+        } : null;
+    } catch {
+        return null;
+    }
+};
 
 const CouponPreview = () => {
-const [data , setData] = useState<any>(null)
-    // const navigate = useNavigate();
+const [data , setData] = useState<CouponBatchData | null>(null)
+const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
     const { batchId } = useParams();
 
     useEffect(() => {
         async function fetchListBatchCoupon(){
+            if (!batchId) return;
             try {
-                const res = await api.get(`/coupons/batches/${batchId}?take=50&offset=0`);
-                setData(res.data)
+                const res = await api.get<CouponBatchData>(
+                  `/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`,
+                );
+                const meta = getCachedCouponMeta(batchId);
+                setData({
+                  ...res.data,
+                  quantity: meta?.quantity ?? res.data?.items?.length,
+                  points: meta?.points ?? res.data?.items?.[0]?.points,
+                });
             } catch (error) {
                 console.error("FETCH BATCH COUPON ERROR", error);
             }
         }
-        fetchListBatchCoupon();
-    }, []);
+        void fetchListBatchCoupon();
+    }, [batchId]);
 
 
     const handleCopy = (code: string) => {
@@ -66,9 +110,10 @@ const [data , setData] = useState<any>(null)
                                 {/* Scrollable List */}
                                 <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
 
-                                    {data?.items?.map((coupon : any) => (
+                                    {data?.items?.map((coupon) => (
                                         <div
                                             key={coupon.id}
+                                            onClick={() => setSelectedCoupon(coupon)}
                                             className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
                                         >
                                             {/* Left Section */}
@@ -92,7 +137,11 @@ const [data , setData] = useState<any>(null)
 
                                             {/* Copy Button */}
                                             <button
-                                                onClick={() => handleCopy(coupon.code)}
+                                                type="button"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleCopy(coupon.code);
+                                                }}
                                                 className="p-2 rounded-xl bg-gray-50 hover:bg-orange-50 text-gray-400 hover:text-[#F26522] transition-all active:scale-90"
                                             >
                                                 <MdContentCopy size={18} />
@@ -122,6 +171,33 @@ const [data , setData] = useState<any>(null)
                     </div>
                 </div>
             </div>
+
+            {selectedCoupon && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6"
+                    onClick={() => setSelectedCoupon(null)}
+                >
+                    <div
+                        className="relative mx-auto w-full max-w-[min(96vw,920px)]"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setSelectedCoupon(null)}
+                            className="absolute right-4 top-0 z-[60] flex h-10 w-10 -translate-y-[calc(100%+10px)] items-center justify-center rounded-full bg-white text-gray-500 shadow-lg ring-1 ring-black/10 transition-all hover:bg-gray-100 hover:text-text-primary sm:right-5 sm:-translate-y-[calc(100%+12px)] sm:h-11 sm:w-11"
+                            aria-label="Close coupon preview"
+                        >
+                            <MdClose size={22} />
+                        </button>
+
+                        <GeneratedCouponCard
+                            couponId={String(selectedCoupon.id ?? selectedCoupon.code)}
+                            couponCode={selectedCoupon.code}
+                            points={Number(selectedCoupon.points ?? data?.points ?? 0)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
