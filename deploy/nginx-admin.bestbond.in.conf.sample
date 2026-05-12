@@ -1,0 +1,20 @@
+# Static admin SPA — rsync GitHub Actions `dist/` here: /var/www/admin.bestbond.in
+# sudo certbot --nginx -d admin.bestbond.in
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name admin.bestbond.in;
+
+    root /var/www/admin.bestbond.in;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }
+}

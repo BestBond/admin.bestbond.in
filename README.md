@@ -71,3 +71,7 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deployment (`admin.bestbond.in`)
+
+See **[deploy/README.md](./deploy/README.md)** for nginx, static web root, GitHub Actions (**Deploy Admin**), and required secrets (`VPS_HOST`, `VPS_SSH_KEY`, `VITE_API_URL`).
