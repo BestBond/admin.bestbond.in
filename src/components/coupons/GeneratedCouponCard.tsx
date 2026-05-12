@@ -316,86 +316,54 @@ const QrCodeSvg = ({ value, className }: { value: string; className?: string }) 
     );
 };
 
-const StepIcon = ({ src, label }: { src: string; label: string }) => (
-    <div className="flex flex-col items-center text-center text-white">
-        <div className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-white shadow-sm">
-            <img src={src} alt={label} className="max-h-[42px] max-w-[42px] object-contain" />
-        </div>
-    </div>
-);
-
 const GeneratedCouponCard = ({ couponId, couponCode, points }: GeneratedCouponCardProps) => {
     const idLabel = couponCode || couponId;
     const qrValue = couponId || couponCode;
+    const pointsFormatted = Number.isFinite(points) ? points.toLocaleString("en-US") : "0";
 
     return (
-        <div className="grid aspect-[765/318] w-full max-w-[765px] grid-cols-[32.5%_67.5%] overflow-hidden rounded-[2px] bg-white shadow-2xl">
-            <div className="flex flex-col items-center justify-center bg-white px-7 py-5">
-                <img src="/hand-with-qr.svg" alt="Scan with phone" className="mb-4 h-[58px] w-[58px] object-contain" />
-                <QrCodeSvg value={qrValue} className="h-[172px] w-[172px]" />
-                <p className="mt-4 text-[16px] font-medium tracking-wide text-[#667085]">
+        <div className="grid w-full max-w-full grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl sm:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)] sm:rounded-3xl sm:min-h-[260px]">
+            <div className="flex flex-col items-center justify-center border-b border-orange-100/40 bg-white px-5 py-6 sm:border-b-0 sm:border-r sm:border-orange-100/40 sm:px-8 sm:py-10">
+                <img
+                    src="/hand-with-qr.svg"
+                    alt=""
+                    className="mb-3 h-12 w-12 shrink-0 object-contain sm:mb-4 sm:h-14 sm:w-14"
+                    aria-hidden
+                />
+                <QrCodeSvg
+                    value={qrValue}
+                    className="h-[136px] w-[136px] sm:h-[min(200px,22vw)] sm:w-[min(200px,22vw)] md:h-[220px] md:w-[220px]"
+                />
+                <p className="mt-3 text-center text-sm font-medium tracking-wide text-[#667085] sm:mt-4 sm:text-base">
                     ID: {idLabel}
                 </p>
             </div>
 
-            <div className="relative overflow-hidden bg-[#202938] px-8 pt-10 text-white">
-                <div className="absolute left-0 top-0 h-full w-full opacity-[0.08]">
-                    <div className="absolute -left-16 top-10 h-44 w-44 rounded-full border-[28px] border-white" />
-                    <div className="absolute bottom-[-70px] right-20 h-52 w-52 rounded-full border-[34px] border-white" />
-                </div>
+            <div className="relative flex min-h-[200px] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#FF9F5A] via-[#F97316] to-[#EA580C] px-6 py-8 sm:min-h-[260px] sm:rounded-tr-3xl sm:px-12 sm:py-12">
+                <div
+                    className="pointer-events-none absolute inset-0 opacity-90"
+                    style={{
+                        background:
+                            "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, transparent 42%, transparent 58%, rgba(0,0,0,0.06) 100%)",
+                    }}
+                />
 
-                <img src="/logo.svg" alt="Best Bond" className="absolute right-5 top-4 h-[38px] w-[60px] object-contain brightness-0 invert" />
+                <img
+                    src="/logo.svg"
+                    alt="Best Bond"
+                    className="absolute right-4 top-4 z-10 h-9 w-auto max-w-[120px] object-contain object-right sm:right-5 sm:top-5 sm:h-10 sm:max-w-[140px]"
+                />
 
-                <div className="absolute top-8 left-1/2 flex w-[210px] -translate-x-1/2 items-end justify-center">
-                    <img src="/drill.svg" alt="" className="relative left-8 h-[76px] w-[64px] object-contain" />
-                    <img src="/phone-left.svg" alt="" className="relative left-6 h-[76px] w-[64px] object-contain" />
-                    <img src="/phone-center.svg" alt="" className="z-10 h-[92px] w-[72px] object-contain" />
-                    <img src="/phone-right.svg" alt="" className="relative right-6 h-[76px] w-[64px] object-contain" />
-                    <img src="/cutter.svg" alt="" className="relative right-8 h-[76px] w-[64px] object-contain" />
-                </div>
-                <div className="relative mx-auto mt-16 flex h-[54px] w-[260px] items-center justify-center rounded-full bg-[#FF7A1A] text-[30px] font-black leading-none tracking-normal">
-                    <span>{points.toLocaleString("en-US")} Points</span>
-                </div>
-
-                <div className="relative mt-8 flex items-start justify-center gap-8">
-                    <div className="flex w-[84px] flex-col items-center text-center">
-                        <StepIcon src="/phone.svg" label="Download app" />
-                        <p className="mt-2 text-[13px] font-black leading-none">Step 1</p>
-                        <p className="mt-1 text-[8px] font-medium leading-[10px] text-white/80">Download the best bond app</p>
+                <div className="relative z-10 mt-6 flex w-full max-w-[300px] flex-col items-center text-center sm:mt-2">
+                    <div className="rounded-full bg-white px-7 py-2.5 shadow-md sm:px-10 sm:py-3">
+                        <span className="text-xl font-extrabold tracking-tight text-[#1F2937] sm:text-[26px] sm:leading-none">
+                            {pointsFormatted} Points
+                        </span>
                     </div>
-                    <div className="flex w-[92px] flex-col items-center text-center">
-                        <StepIcon src="/scan-qr.svg" label="Download app" />
-                        <p className="mt-2 text-[13px] font-black leading-none">Step 2</p>
-                        <p className="mt-1 text-[8px] font-medium leading-[10px] text-white/80">Scan the unique QR on the coupon</p>
-                    </div>
-                    <div className="flex w-[92px] flex-col items-center text-center">
-                        <StepIcon src="/earn.svg" label="Earn points" />
-                        <p className="mt-2 text-[13px] font-black leading-none">Step 3</p>
-                        <p className="mt-1 text-[8px] font-medium leading-[10px] text-white/80">Accumulate points and redeem gifts</p>
-                    </div>
-                </div>
-
-                <div className="absolute right-0 top-[86px] flex h-[178px] w-[54px] flex-col items-center justify-between rounded-l-[12px] bg-white px-2 py-3">
-                    <p className="rotate-90 whitespace-nowrap text-[10px] mt-10 font-normal text-[#5D6675]">
-                        Download the app
+                    <p className="mt-4 max-w-[280px] text-sm font-semibold leading-snug text-white drop-shadow-sm sm:mt-5 sm:text-base">
+                        Scan in the Best Bond app to redeem
                     </p>
-                    <QrCodeSvg value="https://bestbond.app" className="h-[40px] w-[40px]" />
                 </div>
-
-                <svg className="absolute left-[162px] top-[182px] h-[34px] w-[64px]" viewBox="0 0 64 34" fill="none">
-                    <path d="M2 31C18 2 38 2 52 20" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M46 20H53V13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <svg className="absolute left-[282px] top-[220px] h-[32px] w-[62px]" viewBox="0 0 62 32" fill="none">
-                    <path d="M2 3C17 30 38 30 52 13" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                    <path
-                        d="M52 13H45V6"
-                        stroke="white"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        transform="rotate(180 50 12)"
-                    ></path>                </svg>
             </div>
         </div>
     );

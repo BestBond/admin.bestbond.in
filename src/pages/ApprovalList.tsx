@@ -191,7 +191,7 @@ const ApprovalList = () => {
                                 <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-orange-100 px-2 py-0.5 rounded-md">App</span>
                               ) : null}
                               {fullRedemptionQueue && req.channel === "DEALER_STORE" ? (
-                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded-md">Dealer</span>
+                                <span className="text-[9px] font-black text-[#1E2633] uppercase tracking-wide bg-slate-100 px-2 py-0.5 rounded-md">In-store</span>
                               ) : null}
                             </div>
                             {req.flagged && (

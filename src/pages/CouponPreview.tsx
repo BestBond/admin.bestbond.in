@@ -175,17 +175,17 @@ const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
 
             {selectedCoupon && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6"
                     onClick={() => setSelectedCoupon(null)}
                 >
                     <div
-                        className="relative w-full max-w-[840px] shadow-sm"
+                        className="relative mx-auto w-full max-w-[min(96vw,920px)]"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <button
                             type="button"
                             onClick={() => setSelectedCoupon(null)}
-                            className="absolute right-13 -top-5 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-500 shadow-lg transition-all hover:bg-gray-100 hover:text-text-primary"
+                            className="absolute right-4 top-0 z-[60] flex h-10 w-10 -translate-y-[calc(100%+10px)] items-center justify-center rounded-full bg-white text-gray-500 shadow-lg ring-1 ring-black/10 transition-all hover:bg-gray-100 hover:text-text-primary sm:right-5 sm:-translate-y-[calc(100%+12px)] sm:h-11 sm:w-11"
                             aria-label="Close coupon preview"
                         >
                             <MdClose size={22} />

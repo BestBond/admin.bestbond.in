@@ -12,7 +12,6 @@ const SecurityPreferences = () => {
     confirm: ""
   });
   const [loading, setLoading] = useState(false);
-  const [quickLoginPin, setQuickLoginPin] = useState(true);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
