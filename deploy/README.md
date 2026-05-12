@@ -27,8 +27,8 @@ Build runs on GitHub (so `VITE_API_URL` is not stored on the VPS). Static files 
 
 | Secret          | Purpose                                      |
 | --------------- | -------------------------------------------- |
-| `VPS_HOST`      | Server hostname or IP                        |
-| `VPS_SSH_KEY`   | Private key with write access to the web root |
+| `VPS_HOST`      | Server hostname or IP (required for SSH/rsync) |
+| `VPS_SSH_KEY`   | Private SSH key PEM (full file: `BEGIN` … `END`). Not from Hostinger — generate a key pair and put the **private** file here; put the **public** line in `/root/.ssh/authorized_keys` on the VPS. See backend `deploy/README.md` → “Where does `VPS_SSH_KEY` come from?” for steps. |
 | `VITE_API_URL`  | e.g. `https://api.bestbond.in` (no trailing slash) |
 
 **Remote directory** — Default **`/var/www/admin.bestbond.in/`**. Override with repository variable **`VPS_ADMIN_RSYNC_PATH`** (must end with `/` for rsync of `dist/` contents).
