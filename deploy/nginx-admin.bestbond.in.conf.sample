@@ -1,12 +1,17 @@
-# Static admin SPA — rsync GitHub Actions `dist/` here: /var/www/admin.bestbond.in
+# Static admin SPA — admin.bestbond.in
 # sudo certbot --nginx -d admin.bestbond.in
+#
+# If repo lives at /var/www/admin.bestbond.in and you run ./deploy.sh without WEB_ROOT,
+# point nginx root at the Vite output folder:
+#   root /var/www/admin.bestbond.in/dist;
+# If you use WEB_ROOT=... ./deploy.sh to copy dist/* into a docroot, set root to that folder instead.
 
 server {
     listen 80;
     listen [::]:80;
     server_name admin.bestbond.in;
 
-    root /var/www/admin.bestbond.in;
+    root /var/www/admin.bestbond.in/dist;
     index index.html;
 
     location / {

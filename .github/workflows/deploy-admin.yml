@@ -56,5 +56,5 @@ jobs:
           REMOTE_BASE: ${{ vars.VPS_ADMIN_RSYNC_PATH }}
         run: |
           set -euo pipefail
-          REMOTE_DIR="${REMOTE_BASE:-/var/www/admin.bestbond.in/}"
+          REMOTE_DIR="${REMOTE_BASE:-/var/www/admin.bestbond.in/dist/}"
           rsync -avz --delete -e ssh dist/ "root@${{ secrets.VPS_HOST }}:${REMOTE_DIR}"
