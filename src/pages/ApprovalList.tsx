@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdOutlineAccountCircle } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 
 interface RedemptionRequest {
   id: string;
@@ -36,16 +36,15 @@ const ApprovalList = () => {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
       const channel = listChannelFilter;
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/redemptions`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/admin/redemptions", {
         params: {
           sort: sortBy,
-          flagged: flaggedOnly ? 'true' : undefined,
-          status: statusFilter === "OUT_FOR_DELIVERY"
-            ? "OUT_FOR_DELIVERY"
-            : "PROCESSING",
+          flagged: flaggedOnly ? "true" : undefined,
+          status:
+            statusFilter === "OUT_FOR_DELIVERY"
+              ? "OUT_FOR_DELIVERY"
+              : "PROCESSING",
           ...(channel ? { channel } : {}),
           take: 20,
           offset: 0,
@@ -57,7 +56,7 @@ const ApprovalList = () => {
     } finally {
       setLoading(false);
     }
-  }, [sortBy, flaggedOnly, listChannelFilter]);
+  }, [sortBy, flaggedOnly, listChannelFilter, statusFilter]);
 
   useEffect(() => {
     fetchRequests();

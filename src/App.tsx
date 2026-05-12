@@ -13,6 +13,8 @@ import ApprovalList from "./pages/ApprovalList"
 import ApprovalDetails from "./pages/ApprovalDetails"
 import CouponPreview from "./pages/CouponPreview"
 import CouponExport from "./pages/CouponExport"
+import Registration from "./pages/Registration"
+import OpsApprovalList from "./pages/OpsApprovalList"
 
 const ProtectedRoute = ({ children, requiredRole }: { children: any, requiredRole?: string }) => {
   const token = localStorage.getItem('accessToken');
@@ -37,8 +39,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<SignUp />} />
+        <Route path="/register" element={<Registration />} />
         <Route path="/bootstrap-superadmin" element={<BootstrapSuperAdmin />} />
-        
+
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute requiredRole="SUPERADMIN"><UserList /></ProtectedRoute>} />
         <Route path="/users/profile/:userId" element={<ProtectedRoute requiredRole="SUPERADMIN"><UserProfile /></ProtectedRoute>} />
@@ -51,6 +54,7 @@ function App() {
         <Route path="/coupon-generation/export/:batchId" element={<ProtectedRoute requiredRole="SUPERADMIN"><CouponExport /></ProtectedRoute>} />
         <Route path="/approvals" element={<ProtectedRoute><ApprovalList /></ProtectedRoute>} />
         <Route path="/approvals/details/:requestId" element={<ProtectedRoute><ApprovalDetails /></ProtectedRoute>} />
+        <Route path="/ops-approvals" element={<ProtectedRoute requiredRole="SUPERADMIN"><OpsApprovalList /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )

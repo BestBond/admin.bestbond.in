@@ -1,7 +1,7 @@
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { Link,  useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdClose, MdContentCopy } from "react-icons/md";
@@ -51,10 +51,9 @@ const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
         async function fetchListBatchCoupon(){
             if (!batchId) return;
             try {
-                const token = localStorage.getItem("accessToken");
-                const res = await axios.get<CouponBatchData>(`${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const res = await api.get<CouponBatchData>(
+                  `/coupons/batches/${encodeURIComponent(batchId)}?take=50&offset=0`,
+                );
                 const meta = getCachedCouponMeta(batchId);
                 setData({
                   ...res.data,

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdHistory } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import type { AdminUserDetail, AdminUserLedgerResponse } from "../utils/types";
 
 const UserTransactions = () => {
@@ -18,17 +18,11 @@ const UserTransactions = () => {
     const fetchData = async () => {
       if (!userId) return;
       try {
-        const token = localStorage.getItem("accessToken");
         const [userRes, ledgerRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get<AdminUserLedgerResponse>(
-            `${import.meta.env.VITE_API_URL}/admin/users/${userId}/transactions`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-              params: { period, limit: 50, offset: 0 },
-            },
+          api.get(`/admin/users/${userId}`),
+          api.get<AdminUserLedgerResponse>(
+            `/admin/users/${userId}/transactions`,
+            { params: { period, limit: 50, offset: 0 } },
           ),
         ]);
         setUser(userRes.data);

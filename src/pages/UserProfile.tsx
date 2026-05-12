@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdBlock } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import Swal from "sweetalert2";
 import type { AdminUserDetail } from "../utils/types";
 
@@ -27,21 +27,21 @@ const UserProfile = () => {
   const [suspensionReason, setSuspensionReason] = useState("");
   const [isSuspending, setIsSuspending] = useState(false);
 
-  const fetchUserDetail = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!userId) return;
-    if (!opts?.silent) setLoading(true);
-    try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(res.data);
-    } catch (error) {
-      console.error("FETCH USER DETAIL ERROR", error);
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
-  }, [userId]);
+  const fetchUserDetail = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!userId) return;
+      if (!opts?.silent) setLoading(true);
+      try {
+        const res = await api.get(`/admin/users/${userId}`);
+        setUser(res.data);
+      } catch (error) {
+        console.error("FETCH USER DETAIL ERROR", error);
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [userId],
+  );
 
   useEffect(() => {
     void fetchUserDetail();
@@ -55,10 +55,8 @@ const UserProfile = () => {
     if (!suspensionReason || !user) return;
     setIsSuspending(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/users/${user.id}/suspend`, 
-        { reason: suspensionReason }, 
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(`/admin/users/${user.id}/suspend`, 
+        { reason: suspensionReason }
       );
       
       Swal.fire({
@@ -70,9 +68,7 @@ const UserProfile = () => {
       });
 
       // Refresh data
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get(`/admin/users/${userId}`);
       setUser(res.data);
       setIsModalOpen(false);
       setSuspensionReason("");

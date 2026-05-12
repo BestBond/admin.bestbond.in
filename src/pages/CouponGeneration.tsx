@@ -4,7 +4,7 @@ import Header from "../components/layout/Header";
 import { MdArrowBack } from "react-icons/md";
 import { HiInformationCircle } from "react-icons/hi";
 import { GenerateIcon } from "../components/ui/Icons";
-import axios from "axios";
+import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import Select from "react-select";
 import { useNavigate } from "react-router-dom";
@@ -30,9 +30,7 @@ const CouponGeneration = () => {
   useEffect(() => {
     const fetchActiveCount = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/coupons`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await api.get("/coupons", {
           params: { status: 'ACTIVE', take: 1 }
         });
         // Assuming the API returns an array or an object with total count
@@ -60,19 +58,12 @@ const CouponGeneration = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/coupons/generate`,
+      const res = await api.post(
+        "/coupons/generate",
         {
           title,
           points: tierValue,
           quantity: Number(quantity),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
         }
       );
 
@@ -91,7 +82,7 @@ const CouponGeneration = () => {
     } catch (error) {
       console.error("GENERATION ERROR", error);
       let errorMessage = "Failed to generate coupons";
-      if (axios.isAxiosError(error)) {
+      if (isAxiosError(error)) {
         errorMessage = error.response?.data?.message || errorMessage;
       }
       Swal.fire({

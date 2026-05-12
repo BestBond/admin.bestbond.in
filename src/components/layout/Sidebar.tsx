@@ -13,6 +13,7 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
     { label: "Home", icon: <MdHomeFilled size={25} />, path: "/dashboard" },
     { label: "Users", icon: <MdOutlineSwitchAccount size={25} />, path: "/users", roles: ['SUPERADMIN'] },
     { label: "Approvals", icon: <RiCheckDoubleLine size={25} />, path: "/approvals" },
+    { label: "Ops Approval", icon: <RiCheckDoubleLine size={25} />, path: "/ops-approvals", roles: ['SUPERADMIN'] },
     { label: "Profile", icon: <MdPerson size={25} />, path: "/settings" },
   ].filter(item => !item.roles || item.roles.includes(isSuperAdmin ? 'SUPERADMIN' : 'OPERATIONAL_ADMIN'));
 

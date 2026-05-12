@@ -3,12 +3,12 @@ import Header from "../components/layout/Header";
 import { BiDownload } from "react-icons/bi";
 import { MdArrowBack, MdClose, MdPictureAsPdf } from "react-icons/md";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import { useCallback, useEffect, useState } from "react";
 
 async function exportErrorMessage(err: unknown): Promise<string> {
-  if (!axios.isAxiosError(err) || !err.response?.data) {
+  if (!isAxiosError(err) || !err.response?.data) {
     return String((err as Error)?.message ?? "Export failed");
   }
   const data = err.response.data;
@@ -60,18 +60,9 @@ const CouponExport = () => {
     if (!id) {
       throw new Error("Batch id is missing. Please regenerate the batch and try again.");
     }
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      throw new Error("Not authenticated");
-    }
-    const res = await axios.get<Blob>(
-      `${import.meta.env.VITE_API_URL}/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
-      {
-        responseType: "blob",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const res = await api.get<Blob>(
+      `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
+      { responseType: "blob" },
     );
     return res.data instanceof Blob
       ? res.data

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdSecurity, MdNotifications, MdLogout } from "react-icons/md";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import { BiPhone } from "react-icons/bi";
 import type { MeProfileResponse } from "../utils/types";
@@ -30,13 +30,7 @@ const AccountManagement = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        const res = await axios.get<MeProfileResponse>(
-          `${import.meta.env.VITE_API_URL}/users/me/profile`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        const res = await api.get<MeProfileResponse>("/users/me/profile");
         const d = res.data;
         const rolesLabel = staffRoleLabel(d.roles ?? []);
         const displayName =

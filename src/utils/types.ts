@@ -105,4 +105,9 @@ export interface DashboardData {
     count: number;
     last5MinutesCount: number;
   };
+
+  coupons?: {
+    totalIssued: number;
+    totalRedeemed: number;
+  };
 }

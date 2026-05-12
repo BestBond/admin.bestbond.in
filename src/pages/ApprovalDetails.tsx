@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdOutlineAccountCircle, MdFlag, MdInfo } from "react-icons/md";
-import axios from "axios";
+import api, { isAxiosError } from "../utils/api";
 
 /** Matches GET /admin/redemptions/:id (admin.service getRedemptionRequestById). */
 interface RedemptionDetail {
@@ -39,33 +39,34 @@ const ApprovalDetails = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const fetchRequestDetail = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!requestId) return;
-    if (!opts?.silent) setLoading(true);
-    setLoadError(null);
-    try {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get<RedemptionDetail>(
-        `${import.meta.env.VITE_API_URL}/admin/redemptions/${requestId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+  const fetchRequestDetail = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!requestId) return;
+      if (!opts?.silent) setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await api.get<RedemptionDetail>(
+          `/admin/redemptions/${requestId}`,
+        );
+        setRequest(res.data);
+      } catch (error) {
+        console.error("FETCH DETAIL ERROR", error);
+        let msg = "Could not load this approval.";
+        if (isAxiosError(error)) {
+          const data = error.response?.data as
+            | { message?: string | string[] }
+            | undefined;
+          const m = data?.message;
+          msg = Array.isArray(m) ? m.join(", ") : (m ?? error.message);
         }
-      );
-      setRequest(res.data);
-    } catch (error) {
-      console.error("FETCH DETAIL ERROR", error);
-      let msg = "Could not load this approval.";
-      if (axios.isAxiosError(error)) {
-        const data = error.response?.data as { message?: string | string[] } | undefined;
-        const m = data?.message;
-        msg = Array.isArray(m) ? m.join(", ") : (m ?? error.message);
+        setLoadError(msg);
+        setRequest(null);
+      } finally {
+        if (!opts?.silent) setLoading(false);
       }
-      setLoadError(msg);
-      setRequest(null);
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
-  }, [requestId]);
+    },
+    [requestId],
+  );
 
   useEffect(() => {
     void fetchRequestDetail();
@@ -80,10 +81,7 @@ const ApprovalDetails = () => {
 
     setIsProcessing(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/redemptions/${request.id}/${action}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/admin/redemptions/${request.id}/${action}`, {});
 
       if (action === 'approve') {
         setShowSuccessModal(true);

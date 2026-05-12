@@ -6,7 +6,7 @@ import InputField from "../ui/InputField";
 import Button from "../ui/Button";
 import OtpInput from "../ui/OtpInput";
 import { useFormik } from "formik";
-import axios from "axios";
+import api, { isAxiosError } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../../utils/phone";
@@ -26,8 +26,8 @@ const AuthForm = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_URL}/auth/superadmin/bootstrap-available`)
+    api
+      .get("/auth/superadmin/bootstrap-available")
       .then((r) => setBootstrapAllowed(r.data?.allowed === true))
       .catch(() => setBootstrapAllowed(false));
   }, []);
@@ -37,7 +37,15 @@ const AuthForm = () => {
       countryCode: "+91",
       phone: "",
     },
-
+    validate: (values) => {
+      const errors: Record<string, string> = {};
+      if (!values.phone) {
+        errors.phone = "Mobile number is required";
+      } else if (!/^[0-9]{10}$/.test(values.phone)) {
+        errors.phone = "Enter a valid 10-digit number";
+      }
+      return errors;
+    },
     onSubmit: async (values) => {
       if (step === "request") {
         const phoneDigits = normalizeLocalPhoneDigits(
@@ -51,18 +59,10 @@ const AuthForm = () => {
           return;
         }
         try {
-          const res = await axios.post(
-            `${import.meta.env.VITE_API_URL}/auth/otp/request`,
-            {
-              countryCode: values.countryCode.trim(),
-              phone: phoneDigits,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const res = await api.post("/auth/otp/request", {
+            countryCode: values.countryCode.trim(),
+            phone: phoneDigits,
+          });
 
           if (res.status === 201 || res.status === 200) {
             toast.success("OTP Sent Successfully");
@@ -76,15 +76,15 @@ const AuthForm = () => {
         } catch (error) {
           console.error("REQUEST ERROR ", error);
           let errorMessage = "Failed to send OTP";
-          if (axios.isAxiosError(error)) {
+          if (isAxiosError(error)) {
             if (!error.response) {
               errorMessage =
                 error.code === "ERR_NETWORK" ||
-                  error.message === "Network Error"
+                error.message === "Network Error"
                   ? "Cannot reach the API from the browser. On production, set CORS_ORIGINS on the server to include this site (e.g. https://admin.bestbond.in) and redeploy."
                   : errorMessage;
             } else {
-              const m = error.response.data?.message;
+              const m = error.response.data?.message as string | string[] | undefined;
               errorMessage = Array.isArray(m) ? m.join(" ") : m ?? errorMessage;
             }
           }
@@ -113,22 +113,14 @@ const AuthForm = () => {
           if (isAdminType === "super") {
             body.password = pw;
           }
-          const res = await axios.post(
-            `${import.meta.env.VITE_API_URL}/auth/admin/otp/login`,
-            body,
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
+          const res = await api.post("/auth/admin/otp/login", body);
 
           if (res.status === 201 || res.status === 200) {
             toast.success("Login Successful");
             localStorage.setItem("accessToken", res?.data?.accessToken);
             localStorage.setItem(
               "userRole",
-              JSON.stringify(res?.data?.roles || [])
+              JSON.stringify(res?.data?.roles || []),
             );
             localStorage.setItem(
               "userPermissions",
@@ -139,15 +131,14 @@ const AuthForm = () => {
         } catch (error) {
           console.error("VERIFY ERROR ", error);
           let errorMessage = "Login failed";
-          if (axios.isAxiosError(error)) {
-            const m = error.response?.data?.message;
+          if (isAxiosError(error)) {
+            const m = error.response?.data?.message as string | string[] | undefined;
             const raw =
               typeof m === "string"
                 ? m
                 : Array.isArray(m)
                   ? m.join(" ")
                   : "";
-            // Same as mobile: Ops flow but this phone is Super Admin — show password.
             if (
               isAdminType === "management" &&
               /password is required for super admin/i.test(raw)
@@ -186,7 +177,6 @@ const AuthForm = () => {
           </p>
         </div>
 
-        {/* Match mobile: Ops vs Super always available */}
         <div className="flex gap-2.5">
           <button
             type="button"
@@ -194,20 +184,22 @@ const AuthForm = () => {
               setIsAdminType("management");
               setAdminPassword("");
             }}
-            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${isAdminType === "management"
+            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
+              isAdminType === "management"
                 ? "border-brand-orange bg-[#FFF7F0] text-brand-orange"
                 : "border-border text-text-secondary bg-white"
-              }`}
+            }`}
           >
             Ops Admin
           </button>
           <button
             type="button"
             onClick={() => setIsAdminType("super")}
-            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${isAdminType === "super"
+            className={`flex-1 py-3 rounded-xl border-[1.5px] text-[15px] font-bold transition-colors ${
+              isAdminType === "super"
                 ? "border-brand-orange bg-[#FFF7F0] text-brand-orange"
                 : "border-border text-text-secondary bg-white"
-              }`}
+            }`}
           >
             Super Admin
           </button>
@@ -231,6 +223,9 @@ const AuthForm = () => {
                 );
                 formik.setFieldValue("phone", digitsOnly);
               }}
+              onBlur={formik.handleBlur}
+              error={formik.errors.phone}
+              touched={formik.touched.phone}
             />
           ) : (
             <div className="space-y-4">
@@ -253,68 +248,83 @@ const AuthForm = () => {
                     Same password you use on the mobile app (min 8 characters).
                   </p>
                   <div className="relative">
-                  <input
-                    name="adminPassword"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="Min 8 characters"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 rounded-xl border border-border outline-none focus:ring-2 focus:ring-brand-orange text-sm placeholder:text-text-muted bg-white"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
-                  >
-                    {showPassword ? <BsEyeSlashFill size={18} /> : <BsEye size={18} />}
-                  </button>
+                    <input
+                      name="adminPassword"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      placeholder="Min 8 characters"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-12 rounded-xl border border-border outline-none focus:ring-2 focus:ring-brand-orange text-sm placeholder:text-text-muted bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black"
+                    >
+                      {showPassword ? (
+                        <BsEyeSlashFill size={18} />
+                      ) : (
+                        <BsEye size={18} />
+                      )}
+                    </button>
+                  </div>
                 </div>
-                </div>
-          ) : null}
-          <p className="text-sm text-center text-text-secondary">
-            Didn&apos;t receive code?{" "}
-            <span
-              onClick={() => setStep("request")}
-              className="text-brand-orange font-bold cursor-pointer hover:underline"
-            >
-              Resend
-            </span>
-          </p>
-        </div>
+              ) : null}
+              <p className="text-sm text-center text-text-secondary">
+                Didn&apos;t receive code?{" "}
+                <span
+                  onClick={() => setStep("request")}
+                  className="text-brand-orange font-bold cursor-pointer hover:underline"
+                >
+                  Resend
+                </span>
+              </p>
+            </div>
           )}
-      </div>
+        </div>
 
-      <div className="py-4 space-y-4">
-        <Button type="submit">
-          {step === "request" ? "Get OTP" : "Verify OTP"}
-        </Button>
+        <div className="py-4 space-y-4">
+          <Button type="submit">
+            {step === "request" ? "Get OTP" : "Verify OTP"}
+          </Button>
 
-        {step === "request" && bootstrapAllowed ? (
-          <p className="text-center text-sm text-text-secondary">
-            New environment?{" "}
-            <Link
-              to="/bootstrap-superadmin"
-              className="text-brand-orange font-bold hover:underline"
-            >
-              First-time Super Admin setup
-            </Link>
-          </p>
-        ) : null}
-      </div>
+          {step === "request" ? (
+            <p className="text-center text-sm text-text-secondary">
+              New operational admin?{" "}
+              <Link
+                to="/register"
+                className="text-brand-orange font-bold hover:underline"
+              >
+                Ops admin registration
+              </Link>
+            </p>
+          ) : null}
 
-      <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">
-        By logging in, you agree to our{" "}
-        <span className="text-brand-orange hover:underline cursor-pointer">
-          Terms of Service
-        </span>{" "}
-        and{" "}
-        <span className="text-brand-orange hover:underline cursor-pointer">
-          Privacy Policy
-        </span>
-      </p>
-    </form >
+          {step === "request" && bootstrapAllowed ? (
+            <p className="text-center text-sm text-text-secondary">
+              New environment?{" "}
+              <Link
+                to="/bootstrap-superadmin"
+                className="text-brand-orange font-bold hover:underline"
+              >
+                First-time Super Admin setup
+              </Link>
+            </p>
+          ) : null}
+        </div>
+
+        <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">
+          By logging in, you agree to our{" "}
+          <span className="text-brand-orange hover:underline cursor-pointer">
+            Terms of Service
+          </span>{" "}
+          and{" "}
+          <span className="text-brand-orange hover:underline cursor-pointer">
+            Privacy Policy
+          </span>
+        </p>
+      </form>
     </>
   );
 };
