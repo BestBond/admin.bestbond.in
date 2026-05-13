@@ -12,6 +12,34 @@ import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../../utils/phone";
 import { BsEye, BsEyeSlashFill } from "react-icons/bs";
 
+function extractDebugOtp(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const src = payload as Record<string, unknown>;
+  const nested =
+    src.data && typeof src.data === "object"
+      ? (src.data as Record<string, unknown>)
+      : null;
+
+  const candidates: unknown[] = [
+    src.devCode,
+    src.otp,
+    src.code,
+    nested?.devCode,
+    nested?.otp,
+    nested?.code,
+  ];
+
+  for (const v of candidates) {
+    const text = String(v ?? "").trim();
+    if (/^\d{6}$/.test(text)) return text;
+  }
+
+  const msg = String(src.message ?? nested?.message ?? "");
+  const m = msg.match(/\b(\d{6})\b/);
+  return m ? m[1] : null;
+}
+
 const AuthForm = () => {
   const [step, setStep] = useState<"request" | "verify">("request");
   const [showPassword, setShowPassword] = useState(false);
@@ -69,9 +97,8 @@ const AuthForm = () => {
           if (res.status === 201 || res.status === 200) {
             toast.success("OTP Sent Successfully");
 
-            if (res.data && res.data.devCode) {
-              setOtpValue(String(res.data.devCode));
-            }
+            const autoOtp = extractDebugOtp(res.data);
+            if (autoOtp) setOtpValue(autoOtp);
             setAdminPassword("");
             setOpsNoAccountHint(false);
             setStep("verify");
