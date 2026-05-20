@@ -1,8 +1,13 @@
-# Deploying `admin.bestbond.in` (GitHub: **`reward_system_admin`** — local folder in this monorepo is often `reward-system-frontend`)
+# Deploying `admin.bestbond.in`
 
 **On-server layout:** clone at **`/var/www/admin.bestbond.in`** (folder name = hostname). Nginx `root` is usually **`.../admin.bestbond.in/dist`** after `./deploy.sh` (see `deploy/nginx-admin.bestbond.in.conf.sample`).
 
-**Quick deploy (on server):** from clone root **`./deploy.sh`**. Set `VITE_API_URL` in `.env.production` or export it. **`WEB_ROOT` must not be the clone directory** (same path + `rsync --delete` wipes the repo). Use `WEB_ROOT=$ROOT/public`, a sibling like `/var/www/admin-html`, or point nginx at **`.../dist`**. Optional `RUN_GIT_PULL=1`.
+**Quick deploy (on server):** from clone root **`./deploy.sh`**.
+
+- Env: copy `.env.production.example` → `.env.production` (or export `VITE_API_URL=...`).
+- Local dev: `.env.example` → `.env.local`, then `npm run dev`.
+- **`WEB_ROOT` must not be the clone directory** — use nginx `root .../dist` or `WEB_ROOT=$ROOT/public`.
+- Optional: `RUN_GIT_PULL=1 ./deploy.sh`
 
 ## One-time VPS setup
 

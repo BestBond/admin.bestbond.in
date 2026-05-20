@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
 #
-# admin.bestbond.in — Vite admin SPA (static files; no PM2)
-# Run from repo root after cloning to e.g. /var/www/admin.bestbond.in
+# admin.bestbond.in — production static build (Vite → dist/)
+# Run from repo root on the VPS clone, e.g. /var/www/admin.bestbond.in
 #
-#   chmod +x deploy.sh
+#   chmod +x deploy.sh deploy/restart.sh
 #   ./deploy.sh
 #
-# API URL for the bundle:
-#   - Put VITE_API_URL in .env.production, or
-#   - export VITE_API_URL=https://api.bestbond.in ./deploy.sh
-#
-# Optional: copy dist/ elsewhere (nginx root = that folder). WEB_ROOT must NOT be the same as
-# the clone directory — rsync --delete would wipe src/, node_modules/, and break dist/ (vanished files).
-# Good examples: WEB_ROOT=$ROOT/public   or   WEB_ROOT=/var/www/admin-html
-#
-# Optional: RUN_GIT_PULL=1 ./deploy.sh
+# Optional:
+#   RUN_GIT_PULL=1 ./deploy.sh
+#   VITE_API_URL=https://api.bestbond.in ./deploy.sh
+#   WEB_ROOT=/var/www/admin-html ./deploy.sh   (must NOT equal clone root)
 #
 
 set -euo pipefail
@@ -22,10 +17,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-echo "==> [admin.bestbond.in] build from $ROOT"
+log() { echo "==> [admin.bestbond.in] $*"; }
+
+log "deploy from $ROOT"
 
 if [[ "${RUN_GIT_PULL:-0}" == "1" ]] && [[ -d .git ]]; then
-  echo "==> git: fetch + reset"
+  log "git fetch + reset"
   if git rev-parse --verify origin/main >/dev/null 2>&1; then
     git fetch origin main && git reset --hard origin/main
   elif git rev-parse --verify origin/master >/dev/null 2>&1; then
@@ -37,24 +34,46 @@ fi
 
 API_URL="${VITE_API_URL:-}"
 if [[ -z "$API_URL" ]] && [[ -f .env.production ]]; then
-  # shellcheck disable=SC1091
   set -a
-  # shellcheck source=/dev/null
+  # shellcheck disable=SC1091
   source .env.production
   set +a
   API_URL="${VITE_API_URL:-}"
 fi
 API_URL="${API_URL:-https://api.bestbond.in}"
-printf 'VITE_API_URL=%s\n' "$API_URL" > .env.production
-echo "==> VITE_API_URL=$API_URL (written to .env.production)"
 
-echo "==> npm ci"
+if [[ ! -f .env.production ]]; then
+  if [[ -f .env.production.example ]]; then
+    cp .env.production.example .env.production
+    log "created .env.production from .env.production.example"
+  else
+    echo "ERROR: missing .env.production — copy .env.production.example"
+    exit 1
+  fi
+fi
+
+if ! grep -q '^VITE_API_URL=' .env.production 2>/dev/null; then
+  printf '\nVITE_API_URL=%s\n' "$API_URL" >> .env.production
+else
+  # Update only VITE_API_URL line when override passed
+  if [[ -n "${VITE_API_URL:-}" ]]; then
+    if sed --version 2>/dev/null | grep -q GNU; then
+      sed -i "s|^VITE_API_URL=.*|VITE_API_URL=${API_URL}|" .env.production
+    else
+      sed -i '' "s|^VITE_API_URL=.*|VITE_API_URL=${API_URL}|" .env.production
+    fi
+  fi
+fi
+export VITE_API_URL="$API_URL"
+log "VITE_API_URL=$API_URL"
+
+log "npm ci"
 npm ci
 
-echo "==> npm run build"
+log "npm run build"
 npm run build
 
-if [[ ! -d dist ]]; then
+if [[ ! -d dist ]] || [[ ! -f dist/index.html ]]; then
   echo "ERROR: dist/ missing after build"
   exit 1
 fi
@@ -66,15 +85,12 @@ if [[ -n "$WEB_ROOT" ]]; then
   web_p="$(cd "$WEB_ROOT" && pwd -P)"
   if [[ "$web_p" == "$root_p" ]]; then
     echo "ERROR: WEB_ROOT cannot equal the clone directory ($ROOT)."
-    echo "       rsync --delete into the repo root removes source files and causes 'file has vanished'."
-    echo "       Use nginx: root ${ROOT}/dist;  and run ./deploy.sh with no WEB_ROOT."
-    echo "       Or set WEB_ROOT to e.g. $ROOT/public or a sibling folder like /var/www/admin-html."
+    echo "       Use nginx root ${ROOT}/dist or WEB_ROOT=$ROOT/public"
     exit 1
   fi
-  echo "==> rsync dist/ → $WEB_ROOT/"
+  log "rsync dist/ → $WEB_ROOT/"
   rsync -a --delete "${ROOT}/dist/" "${WEB_ROOT}/"
-  echo "==> Done. Nginx root should be: $WEB_ROOT"
+  log "Done. Nginx root: $WEB_ROOT"
 else
-  echo "==> Done. Nginx root should be: ${ROOT}/dist"
-  echo "    (Or re-run with WEB_ROOT=/path/to/htdocs to copy files out of dist/)"
+  log "Done. Nginx root: ${ROOT}/dist"
 fi
