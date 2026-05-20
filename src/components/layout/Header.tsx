@@ -13,6 +13,8 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
 const navigate  = useNavigate();
     const handleLogout = () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userPermissions");
     navigate("/login");
   };
 

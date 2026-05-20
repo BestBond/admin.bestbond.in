@@ -1,3 +1,19 @@
+export type GiftTier = 'WORKER' | 'CONTRACTOR';
+
+/** GET /admin/rewards */
+export interface AdminRewardDto {
+  id: string;
+  title: string;
+  description: string | null;
+  pointsCost: number;
+  giftTier: GiftTier;
+  sortOrder: number;
+  imageUrl: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** GET /admin/users — each list row */
 export interface AdminUserListItem {
   id: string;

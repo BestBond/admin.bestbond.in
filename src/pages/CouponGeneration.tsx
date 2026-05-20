@@ -9,16 +9,15 @@ import Swal from "sweetalert2";
 import Select from "react-select";
 import { useNavigate } from "react-router-dom";
 import '../App.css'
+import { getCouponTierOptions } from "../constants/couponTiers";
 
-const tierOptions = [
-  { value: 500, label: "Select Value: 500 Pts" },
-  { value: 1000, label: "Select Value: 1000 Pts" },
-  { value: 2000, label: "Select Value: 2000 Pts" },
-  { value: 5000, label: "Select Value: 5000 Pts" },
-];
+const tierOptions = getCouponTierOptions().map((t) => ({
+  value: t.value,
+  label: t.label,
+}));
 
 const CouponGeneration = () => {
-  const [tierValue, setTierValue] = useState<number>(1000);
+  const [tierValue, setTierValue] = useState<number>(20);
   const [quantity, setQuantity] = useState<number | "">(100);
   const [title] = useState<string>("Bulk Coupon Generation");
   const [loading, setLoading] = useState(false);

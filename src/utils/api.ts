@@ -8,13 +8,12 @@ function isPublicAuthPath(url: string | undefined): boolean {
   if (!url) return false;
   const u = url.startsWith("http") ? new URL(url).pathname : url;
   return (
-    u.includes("/auth/otp/request") ||
-    u.includes("/auth/admin/otp/login") ||
-    u.includes("/auth/admin/otp/signup") ||
+    u.includes("/auth/admin/passcode/login") ||
+    u.includes("/auth/admin/passcode/signup") ||
     u.includes("/auth/superadmin/bootstrap-available") ||
-    u.includes("/auth/superadmin/otp/signup") ||
-    u.includes("/auth/customer/otp/login") ||
-    u.includes("/auth/customer/otp/signup")
+    u.includes("/auth/superadmin/passcode/signup") ||
+    u.includes("/auth/customer/passcode/login") ||
+    u.includes("/auth/customer/passcode/signup")
   );
 }
 
@@ -48,12 +47,11 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       const url = String(error.config?.url ?? "");
       const isAuthHandshakeFailure =
-        url.includes("/auth/admin/otp/login") ||
-        url.includes("/auth/admin/otp/signup") ||
-        url.includes("/auth/otp/request") ||
-        url.includes("/auth/customer/otp/login") ||
-        url.includes("/auth/customer/otp/signup") ||
-        url.includes("/auth/superadmin/otp/signup");
+        url.includes("/auth/admin/passcode/login") ||
+        url.includes("/auth/admin/passcode/signup") ||
+        url.includes("/auth/customer/passcode/login") ||
+        url.includes("/auth/customer/passcode/signup") ||
+        url.includes("/auth/superadmin/passcode/signup");
 
       if (!isAuthHandshakeFailure) {
         localStorage.removeItem('accessToken');

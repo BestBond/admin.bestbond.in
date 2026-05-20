@@ -5,6 +5,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdOutlineAccountCircle, MdFlag, MdInfo } from "react-icons/md";
 import api, { isAxiosError } from "../utils/api";
+import { rewardImageSrc } from "../utils/rewardImage";
 
 /** Matches GET /admin/redemptions/:id (admin.service getRedemptionRequestById). */
 interface RedemptionDetail {
@@ -131,9 +132,7 @@ const ApprovalDetails = () => {
 
   const rewardTitle = request.reward.title ?? "Reward";
   const rewardPoints = Number(request.reward.points ?? 0);
-  const avatarSrc =
-    request.reward.imageUrl?.trim() ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(rewardTitle)}&background=random&color=fff`;
+  const rewardImgSrc = rewardImageSrc(request.reward.imageUrl);
   const canApproveReject = request.status === "PROCESSING";
 
   return (
@@ -181,7 +180,7 @@ const ApprovalDetails = () => {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6 ml-2">REWARD DETAILS</p>
               <div className="flex items-center gap-10">
                 <div className="w-24 h-24 bg-gray-50 rounded-[32px] flex items-center justify-center text-5xl shadow-inner border border-gray-50 overflow-hidden">
-                  <img src={avatarSrc} alt="" className="w-full h-full object-cover opacity-90" />
+                  <img src={rewardImgSrc} alt="" className="w-full h-full object-contain opacity-90 p-1" />
                 </div>
                 <div>
                   <h3 className="text-4xl font-black text-[#1E2633] tracking-tight font-bricolage">{rewardTitle}</h3>

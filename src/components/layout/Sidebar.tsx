@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { MdHomeFilled, MdPerson, MdOutlineSwitchAccount} from "react-icons/md";
+import { MdHomeFilled, MdPerson, MdOutlineSwitchAccount, MdCardGiftcard } from "react-icons/md";
 import { RiCheckDoubleLine } from "react-icons/ri";
 
 
@@ -12,6 +12,7 @@ const isSuperAdmin = userRoles.includes('SUPERADMIN');
   const navItems = [
     { label: "Home", icon: <MdHomeFilled size={25} />, path: "/dashboard" },
     { label: "Users", icon: <MdOutlineSwitchAccount size={25} />, path: "/users", roles: ['SUPERADMIN'] },
+    { label: "Gift Catalog", icon: <MdCardGiftcard size={25} />, path: "/gifts", roles: ['SUPERADMIN'] },
     { label: "Approvals", icon: <RiCheckDoubleLine size={25} />, path: "/approvals" },
     { label: "Ops Approval", icon: <RiCheckDoubleLine size={25} />, path: "/ops-approvals", roles: ['SUPERADMIN'] },
     { label: "Profile", icon: <MdPerson size={25} />, path: "/settings" },

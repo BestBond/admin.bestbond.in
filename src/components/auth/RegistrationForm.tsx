@@ -3,15 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useFormik } from "formik";
 import { toast } from "react-toastify";
 import InputField from "../ui/InputField";
-import OtpInput from "../ui/OtpInput";
+import PasscodeInput from "../ui/PasscodeInput";
 import api, { isAxiosError } from "../../utils/api";
-import { extractDebugOtp } from "../../utils/debugOtp";
 
 const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
   const [step, setStep] = useState<"register" | "pending">("register");
-  const [otpValue, setOtpValue] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,8 +22,8 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
       phone: "",
     },
     validate: (values) => {
-      const errors: any = {};
-      
+      const errors: Record<string, string> = {};
+
       if (!values.fullName) {
         errors.fullName = "Full name is required";
       } else if (values.fullName.length > 50) {
@@ -46,24 +44,32 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
 
       if (!values.countryCode) {
         errors.countryCode = "Code required";
-      } else if (values.countryCode.length < 1 || values.countryCode.length > 5) {
+      } else if (
+        values.countryCode.length < 1 ||
+        values.countryCode.length > 5
+      ) {
         errors.countryCode = "Invalid code";
       }
 
       return errors;
     },
     onSubmit: async (values) => {
-      if (!otpValue || otpValue.length < 6) {
-        toast.error("Please enter a valid OTP");
+      if (passcode.length !== 6 || confirmPasscode.length !== 6) {
+        toast.error("Enter a valid 6-digit passcode.");
+        return;
+      }
+      if (passcode !== confirmPasscode) {
+        toast.error("Passcodes do not match.");
         return;
       }
 
       setIsSubmitting(true);
       try {
-        const res = await api.post("/auth/admin/otp/signup", {
+        const res = await api.post("/auth/admin/passcode/signup", {
           countryCode: values.countryCode,
           phone: values.phone,
-          code: otpValue,
+          passcode,
+          confirmPasscode,
           fullName: values.fullName,
           email: values.email,
         });
@@ -96,40 +102,8 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
     if (digits?.length === 10) {
       void formik.setFieldValue("phone", digits);
     }
-    // One-shot prefill when navigating from login (Ops account missing).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleVerifyPhone = async () => {
-    if (!formik.values.phone || formik.values.phone.length < 10) {
-      toast.error("Please enter a valid phone number");
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const res = await api.post("/auth/otp/request", {
-        countryCode: formik.values.countryCode,
-        phone: formik.values.phone,
-      });
-
-      if (res.status === 201 || res.status === 200) {
-        toast.success("OTP Sent Successfully");
-        setIsVerified(true);
-        const autoOtp = extractDebugOtp(res.data);
-        if (autoOtp) setOtpValue(autoOtp);
-      }
-    } catch (error) {
-      console.error("OTP REQUEST ERROR", error);
-      let errorMessage = "Failed to send OTP";
-      if (isAxiosError(error)) {
-        errorMessage = error.response?.data?.message || errorMessage;
-      }
-      toast.error(errorMessage);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
 
   if (step === "pending") {
     return (
@@ -140,7 +114,7 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
             <circle cx="12" cy="12" r="9" stroke="#F26522" strokeWidth="2"/>
           </svg>
         </div>
-        
+
         <div className="space-y-2">
           <h2 className="text-3xl font-black text-[#1E2633] tracking-tight font-bricolage">
             Waiting for Super Admin approval
@@ -178,7 +152,7 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
           Complete Your Profile
         </h1>
         <p className="text-gray-400 text-lg font-medium">
-          Let's get started once you fill the details for your profile
+          Fill in your details and set a 6-digit passcode for login
         </p>
       </div>
 
@@ -206,37 +180,42 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
             touched={formik.touched.email}
           />
 
-          <div className="space-y-1 relative">
-            <InputField
-              label="MOBILE NUMBER"
-              placeholder="Enter Mobile"
-              type="tel"
-              name="phone"
-              value={formik.values.phone}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              error={formik.errors.phone}
-              touched={formik.touched.phone}
-            />
-            <button
-              type="button"
-              onClick={handleVerifyPhone}
-              disabled={isVerifying || !formik.values.phone || !!formik.errors.phone}
-              className={`absolute right-4 ${formik.errors.phone && formik.touched.phone ? 'bottom-5' : 'bottom-3'} text-brand-orange font-bold text-sm uppercase tracking-widest hover:underline disabled:opacity-50 transition-all`}
-            >
-              {isVerifying ? "Sending..." : "Verify"}
-            </button>
-          </div>
+          <InputField
+            label="MOBILE NUMBER"
+            placeholder="Enter Mobile"
+            type="tel"
+            name="phone"
+            value={formik.values.phone}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            error={formik.errors.phone}
+            touched={formik.touched.phone}
+          />
 
           <div className="space-y-4 pt-2">
-            <label className={`text-[12px] font-bold uppercase tracking-[0.2em] ml-1 transition-colors ${!isVerified ? 'text-gray-300' : 'text-gray-400'}`}>
-              Verification Code
+            <label className="text-[12px] font-bold uppercase tracking-[0.2em] ml-1 text-gray-400">
+              Passcode
             </label>
-            <div className={`flex justify-center transition-opacity ${!isVerified ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
-              <OtpInput
+            <div className="flex justify-center">
+              <PasscodeInput
                 length={6}
-                value={otpValue}
-                onChange={(val) => setOtpValue(val)}
+                value={passcode}
+                onChange={setPasscode}
+                idPrefix="ops-signup-passcode"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="text-[12px] font-bold uppercase tracking-[0.2em] ml-1 text-gray-400">
+              Confirm passcode
+            </label>
+            <div className="flex justify-center">
+              <PasscodeInput
+                length={6}
+                value={confirmPasscode}
+                onChange={setConfirmPasscode}
+                idPrefix="ops-signup-confirm"
               />
             </div>
           </div>
@@ -245,7 +224,14 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
         <div className="pt-8">
           <button
             type="submit"
-            disabled={isSubmitting || !otpValue || otpValue.length < 6 || Object.keys(formik.errors).length > 0 || !formik.values.fullName || !formik.values.email}
+            disabled={
+              isSubmitting ||
+              passcode.length < 6 ||
+              confirmPasscode.length < 6 ||
+              Object.keys(formik.errors).length > 0 ||
+              !formik.values.fullName ||
+              !formik.values.email
+            }
             className="w-full bg-[#F26522] text-white py-6 rounded-full font-bold text-xl shadow-2xl shadow-[#F26522]/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:hover:scale-100 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (

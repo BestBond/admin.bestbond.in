@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import InputField from "../components/ui/InputField";
 import Button from "../components/ui/Button";
-import OtpInput from "../components/ui/OtpInput";
+import PasscodeInput from "../components/ui/PasscodeInput";
 import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../utils/phone";
-import { extractDebugOtp } from "../utils/debugOtp";
+import api, { isAxiosError } from "../utils/api";
 
 /**
  * First Super Admin only: GET /auth/superadmin/bootstrap-available must be true.
@@ -14,53 +13,20 @@ import { extractDebugOtp } from "../utils/debugOtp";
 export default function BootstrapSuperAdmin() {
   const navigate = useNavigate();
   const [allowed, setAllowed] = useState<boolean | null>(null);
-  const [step, setStep] = useState<"request" | "verify">("request");
   const [countryCode] = useState("+91");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_API_URL}/auth/superadmin/bootstrap-available`)
+    api
+      .get("/auth/superadmin/bootstrap-available")
       .then((r) => setAllowed(r.data?.allowed === true))
       .catch(() => setAllowed(false));
   }, []);
-
-  const requestOtp = async () => {
-    const digits = normalizeLocalPhoneDigits(phone, countryCode);
-    if (digits.length !== 10) {
-      toast.error(
-        "Enter your 10-digit mobile (without +91 — it is already the default).",
-      );
-      return;
-    }
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/otp/request`,
-        { countryCode, phone: digits },
-        { headers: { "Content-Type": "application/json" } },
-      );
-      if (res.status === 201 || res.status === 200) {
-        toast.success("OTP sent.");
-        const autoOtp = extractDebugOtp(res.data);
-        if (autoOtp) setOtp(autoOtp);
-        setStep("verify");
-      }
-    } catch (e) {
-      console.error(e);
-      let msg = "Failed to send OTP";
-      if (axios.isAxiosError(e)) {
-        const m = e.response?.data?.message;
-        msg = Array.isArray(m) ? m.join(" ") : m ?? msg;
-      }
-      toast.error(msg);
-    }
-  };
 
   const submitSignup = async () => {
     const digits = normalizeLocalPhoneDigits(phone, countryCode);
@@ -68,8 +34,12 @@ export default function BootstrapSuperAdmin() {
       toast.error("Enter a valid 10-digit mobile number.");
       return;
     }
-    if (otp.length !== 6) {
-      toast.error("Enter the 6-digit OTP.");
+    if (passcode.length !== 6 || confirmPasscode.length !== 6) {
+      toast.error("Enter a valid 6-digit passcode.");
+      return;
+    }
+    if (passcode !== confirmPasscode) {
+      toast.error("Passcodes do not match.");
       return;
     }
     if (!fullName.trim()) {
@@ -80,28 +50,16 @@ export default function BootstrapSuperAdmin() {
       toast.error("Enter email.");
       return;
     }
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
     setSubmitting(true);
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/superadmin/otp/signup`,
-        {
-          countryCode,
-          phone: digits,
-          code: otp,
-          fullName: fullName.trim(),
-          email: email.trim(),
-          password,
-        },
-        { headers: { "Content-Type": "application/json" } },
-      );
+      const res = await api.post("/auth/superadmin/passcode/signup", {
+        countryCode,
+        phone: digits,
+        passcode,
+        confirmPasscode,
+        fullName: fullName.trim(),
+        email: email.trim(),
+      });
       const token = res.data?.accessToken;
       if (token) {
         localStorage.setItem("accessToken", token);
@@ -121,7 +79,7 @@ export default function BootstrapSuperAdmin() {
     } catch (e) {
       console.error(e);
       let msg = "Could not create Super Admin";
-      if (axios.isAxiosError(e)) {
+      if (isAxiosError(e)) {
         const m = e.response?.data?.message;
         msg = Array.isArray(m) ? m.join(" ") : m ?? e.message;
       }
@@ -165,93 +123,72 @@ export default function BootstrapSuperAdmin() {
               First Super Admin setup
             </h1>
             <p className="text-text-secondary mt-2 text-sm">
-              Verify your mobile with OTP, then set your profile and account
-              password (min 8 characters). You will use this password together
-              with OTP on every Super Admin login.
+              Set your mobile, profile, and a 6-digit passcode. You will use this
+              passcode on every Super Admin login.
             </p>
           </div>
 
-          {step === "request" ? (
-            <>
-              <InputField
-                label="Mobile (10 digits)"
-                placeholder="Mobile"
-                type="tel"
-                name="phone"
-                inputMode="numeric"
-                maxLength={10}
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) =>
-                  setPhone(
-                    normalizeLocalPhoneDigits(e.target.value, countryCode),
-                  )
-                }
+          <InputField
+            label="Mobile (10 digits)"
+            placeholder="Mobile"
+            type="tel"
+            name="phone"
+            inputMode="numeric"
+            maxLength={10}
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) =>
+              setPhone(normalizeLocalPhoneDigits(e.target.value, countryCode))
+            }
+          />
+          <InputField
+            label="Full name"
+            placeholder="Full name"
+            name="fullName"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+          <InputField
+            label="Email"
+            placeholder="Email"
+            type="email"
+            name="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <div className="space-y-2">
+            <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
+              Passcode
+            </label>
+            <div className="flex justify-center">
+              <PasscodeInput
+                length={6}
+                value={passcode}
+                onChange={setPasscode}
+                idPrefix="super-bootstrap-passcode"
               />
-              <Button type="button" onClick={requestOtp}>
-                Send OTP
-              </Button>
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
-                  Verification code
-                </label>
-                <div className="flex justify-center">
-                  <OtpInput length={6} value={otp} onChange={setOtp} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStep("request")}
-                  className="text-sm text-brand-orange font-bold"
-                >
-                  Change mobile
-                </button>
-              </div>
-              <InputField
-                label="Full name"
-                placeholder="Full name"
-                name="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
+              Confirm passcode
+            </label>
+            <div className="flex justify-center">
+              <PasscodeInput
+                length={6}
+                value={confirmPasscode}
+                onChange={setConfirmPasscode}
+                idPrefix="super-bootstrap-confirm"
               />
-              <InputField
-                label="Email"
-                placeholder="Email"
-                type="email"
-                name="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <InputField
-                label="Account password (min 8)"
-                placeholder="Password"
-                type="password"
-                name="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <InputField
-                label="Confirm password"
-                placeholder="Confirm password"
-                type="password"
-                name="confirmPassword"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-              <Button
-                type="button"
-                onClick={submitSignup}
-                disabled={submitting}
-              >
-                {submitting ? "Creating…" : "Create Super Admin"}
-              </Button>
-            </>
-          )}
+            </div>
+          </div>
+
+          <Button type="button" onClick={submitSignup} disabled={submitting}>
+            {submitting ? "Creating…" : "Create Super Admin"}
+          </Button>
 
           <p className="text-center">
             <Link to="/login" className="text-brand-orange font-bold text-sm">

@@ -1,3 +1,6 @@
+import type { CSSProperties } from "react";
+import { getCouponTierTheme } from "../../constants/couponTiers";
+
 const QR_SIZE = 29;
 const QR_DATA_CODEWORDS = 44;
 const QR_EC_CODEWORDS = 26;
@@ -318,12 +321,24 @@ const QrCodeSvg = ({ value, className }: { value: string; className?: string }) 
 
 const GeneratedCouponCard = ({ couponId, couponCode, points }: GeneratedCouponCardProps) => {
     const idLabel = couponCode || couponId;
-    const qrValue = couponId || couponCode;
+    const qrValue = couponCode || couponId;
     const pointsFormatted = Number.isFinite(points) ? points.toLocaleString("en-US") : "0";
+    const tier = getCouponTierTheme(points);
+
+    const leftPanelStyle: CSSProperties = tier.leftGradient
+        ? { background: tier.leftGradient, borderColor: tier.leftBorder }
+        : { backgroundColor: tier.leftBg, borderColor: tier.leftBorder };
+
+    const pillStyle: CSSProperties = tier.pillGradient
+        ? { background: tier.pillGradient, borderColor: tier.pillBorder }
+        : { backgroundColor: tier.pillBg, borderColor: tier.pillBorder };
 
     return (
         <div className="grid w-full max-w-full grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl sm:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)] sm:rounded-3xl sm:min-h-[260px]">
-            <div className="flex flex-col items-center justify-center border-b border-orange-100/40 bg-white px-5 py-6 sm:border-b-0 sm:border-r sm:border-orange-100/40 sm:px-8 sm:py-10">
+            <div
+                className="flex flex-col items-center justify-center border-b px-5 py-6 sm:border-b-0 sm:border-r sm:px-8 sm:py-10"
+                style={{ ...leftPanelStyle, borderWidth: 1, borderStyle: "solid" }}
+            >
                 <img
                     src="/hand-with-qr.svg"
                     alt=""
@@ -355,7 +370,10 @@ const GeneratedCouponCard = ({ couponId, couponCode, points }: GeneratedCouponCa
                 />
 
                 <div className="relative z-10 mt-6 flex w-full max-w-[300px] flex-col items-center text-center sm:mt-2">
-                    <div className="rounded-full bg-white px-7 py-2.5 shadow-md sm:px-10 sm:py-3">
+                    <div
+                        className="rounded-full px-7 py-2.5 shadow-md sm:px-10 sm:py-3"
+                        style={{ ...pillStyle, borderWidth: 2, borderStyle: "solid" }}
+                    >
                         <span className="text-xl font-extrabold tracking-tight text-[#1F2937] sm:text-[26px] sm:leading-none">
                             {pointsFormatted} Points
                         </span>
