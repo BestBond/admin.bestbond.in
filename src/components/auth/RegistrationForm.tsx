@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import InputField from "../ui/InputField";
 import OtpInput from "../ui/OtpInput";
 import api, { isAxiosError } from "../../utils/api";
+import { extractDebugOtp } from "../../utils/debugOtp";
 
 const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
   const [step, setStep] = useState<"register" | "pending">("register");
@@ -112,12 +113,11 @@ const RegistrationForm = ({ onPending }: { onPending: () => void }) => {
         phone: formik.values.phone,
       });
 
-      if (res.status === 201) {
+      if (res.status === 201 || res.status === 200) {
         toast.success("OTP Sent Successfully");
         setIsVerified(true);
-        if (res.data && res.data.devCode) {
-          setOtpValue(res.data.devCode);
-        }
+        const autoOtp = extractDebugOtp(res.data);
+        if (autoOtp) setOtpValue(autoOtp);
       }
     } catch (error) {
       console.error("OTP REQUEST ERROR", error);

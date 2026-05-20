@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import OtpInput from "../components/ui/OtpInput";
 import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../utils/phone";
+import { extractDebugOtp } from "../utils/debugOtp";
 
 /**
  * First Super Admin only: GET /auth/superadmin/bootstrap-available must be true.
@@ -46,7 +47,8 @@ export default function BootstrapSuperAdmin() {
       );
       if (res.status === 201 || res.status === 200) {
         toast.success("OTP sent.");
-        if (res.data?.devCode) setOtp(String(res.data.devCode));
+        const autoOtp = extractDebugOtp(res.data);
+        if (autoOtp) setOtp(autoOtp);
         setStep("verify");
       }
     } catch (e) {

@@ -10,35 +10,8 @@ import api, { isAxiosError } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import { normalizeLocalPhoneDigits } from "../../utils/phone";
+import { extractDebugOtp } from "../../utils/debugOtp";
 import { BsEye, BsEyeSlashFill } from "react-icons/bs";
-
-function extractDebugOtp(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-
-  const src = payload as Record<string, unknown>;
-  const nested =
-    src.data && typeof src.data === "object"
-      ? (src.data as Record<string, unknown>)
-      : null;
-
-  const candidates: unknown[] = [
-    src.devCode,
-    src.otp,
-    src.code,
-    nested?.devCode,
-    nested?.otp,
-    nested?.code,
-  ];
-
-  for (const v of candidates) {
-    const text = String(v ?? "").trim();
-    if (/^\d{6}$/.test(text)) return text;
-  }
-
-  const msg = String(src.message ?? nested?.message ?? "");
-  const m = msg.match(/\b(\d{6})\b/);
-  return m ? m[1] : null;
-}
 
 const AuthForm = () => {
   const [step, setStep] = useState<"request" | "verify">("request");
@@ -98,7 +71,14 @@ const AuthForm = () => {
             toast.success("OTP Sent Successfully");
 
             const autoOtp = extractDebugOtp(res.data);
-            if (autoOtp) setOtpValue(autoOtp);
+            if (autoOtp) {
+              setOtpValue(autoOtp);
+            } else if (import.meta.env.DEV) {
+              toast.info(
+                "OTP sent, but the API did not return devCode. Restart the API with MSG91_OTP_ENABLED=0 (or OTP_DEBUG_EXPOSE_CODE=1), or use http://localhost:3000 in .env.development.",
+                { autoClose: 8000 },
+              );
+            }
             setAdminPassword("");
             setOpsNoAccountHint(false);
             setStep("verify");
@@ -288,7 +268,10 @@ const AuthForm = () => {
             />
           ) : (
             <div className="space-y-4">
-              <label className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1">
+              <label
+                htmlFor="admin-login-otp"
+                className="text-[12px] font-semibold text-text-secondary tracking-wider uppercase ml-1 block"
+              >
                 Verification Code
               </label>
               <div className="flex justify-center">
