@@ -242,13 +242,19 @@ const AuthForm = () => {
 
         <p className="text-[14px] font-medium text-text-secondary tracking-wide text-center leading-5 max-w-[300px] mx-auto">
           By logging in, you agree to our{" "}
-          <span className="text-brand-orange hover:underline cursor-pointer">
+          <Link
+            to="/terms-of-service"
+            className="text-brand-orange hover:underline"
+          >
             Terms of Service
-          </span>{" "}
+          </Link>{" "}
           and{" "}
-          <span className="text-brand-orange hover:underline cursor-pointer">
+          <Link
+            to="/privacy-policy"
+            className="text-brand-orange hover:underline"
+          >
             Privacy Policy
-          </span>
+          </Link>
         </p>
       </form>
     </>

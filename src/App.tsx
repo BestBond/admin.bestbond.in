@@ -16,6 +16,7 @@ import CouponExport from "./pages/CouponExport"
 import Registration from "./pages/Registration"
 import OpsApprovalList from "./pages/OpsApprovalList"
 import GiftCatalog from "./pages/GiftCatalog"
+import LegalDocument from "./pages/LegalDocument"
 
 const ProtectedRoute = ({ children, requiredRole }: { children: any, requiredRole?: string }) => {
   const token = localStorage.getItem('accessToken');
@@ -42,6 +43,8 @@ function App() {
         <Route path="/login" element={<SignUp />} />
         <Route path="/register" element={<Registration />} />
         <Route path="/bootstrap-superadmin" element={<BootstrapSuperAdmin />} />
+        <Route path="/terms-of-service" element={<LegalDocument kind="terms" />} />
+        <Route path="/privacy-policy" element={<LegalDocument kind="privacy" />} />
 
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute requiredRole="SUPERADMIN"><UserList /></ProtectedRoute>} />
