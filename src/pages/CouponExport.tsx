@@ -7,7 +7,18 @@ import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import { useCallback, useEffect, useState } from "react";
 
+const COUPON_PDF_REQUEST_TIMEOUT_MS = 300_000;
+
 async function exportErrorMessage(err: unknown): Promise<string> {
+  if (isAxiosError(err) && !err.response) {
+    const code = err.code ?? "";
+    if (code === "ECONNABORTED" || /timeout/i.test(err.message)) {
+      return "PDF generation timed out. Large batches can take 1–3 minutes — try again or export fewer coupons.";
+    }
+    if (/network error/i.test(err.message)) {
+      return "Connection lost while generating the PDF. Wait a moment and try again (100 coupons may take up to 2 minutes).";
+    }
+  }
   if (!isAxiosError(err) || !err.response?.data) {
     return String((err as Error)?.message ?? "Export failed");
   }
@@ -77,7 +88,10 @@ const CouponExport = () => {
     }
     const res = await api.get<Blob>(
       `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
-      { responseType: "blob" },
+      {
+        responseType: "blob",
+        timeout: COUPON_PDF_REQUEST_TIMEOUT_MS,
+      },
     );
     return res.data instanceof Blob
       ? res.data
