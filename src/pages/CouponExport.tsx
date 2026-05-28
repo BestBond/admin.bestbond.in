@@ -49,6 +49,21 @@ const CouponExport = () => {
     });
   }, []);
 
+  const handleDiscard = async () => {
+    const result = await Swal.fire({
+      title: "Discard this batch?",
+      text: "You will leave export and return to Generate. Coupons remain in the system.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Discard",
+      cancelButtonText: "Stay",
+      confirmButtonColor: "#F26522",
+    });
+    if (!result.isConfirmed) return;
+    localStorage.removeItem("couponData");
+    navigate("/coupon-generation/form", { replace: true });
+  };
+
   useEffect(() => {
     return () => {
       if (pdfPreviewUrl) window.URL.revokeObjectURL(pdfPreviewUrl);
@@ -256,7 +271,13 @@ const CouponExport = () => {
 
           {/* Cancel */}
           <div className="text-center mt-4">
-            <button className="text-sm text-orange-500 font-medium hover:underline">
+            <button
+              type="button"
+              onClick={() => {
+                void handleDiscard();
+              }}
+              className="text-sm text-orange-500 font-medium hover:underline"
+            >
               Cancel / Discard →
             </button>
           </div>

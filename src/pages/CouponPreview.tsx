@@ -2,7 +2,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { useEffect, useState } from "react";
 import api from "../utils/api";
-import { Link,  useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdClose, MdContentCopy } from "react-icons/md";
 import GeneratedCouponCard from "../components/coupons/GeneratedCouponCard";
@@ -46,6 +46,7 @@ const CouponPreview = () => {
 const [data , setData] = useState<CouponBatchData | null>(null)
 const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
     const { batchId } = useParams();
+    const navigate = useNavigate();
 
     useEffect(() => {
         async function fetchListBatchCoupon(){
@@ -79,6 +80,21 @@ const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
             toast: true,
             position: 'top-end'
         });
+    };
+
+    const handleDiscard = async () => {
+        const result = await Swal.fire({
+            title: "Discard this batch?",
+            text: "Coupons are already generated. You will leave preview and return to Generate.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Discard",
+            cancelButtonText: "Stay",
+            confirmButtonColor: "#F26522",
+        });
+        if (!result.isConfirmed) return;
+        localStorage.removeItem("couponData");
+        navigate("/coupon-generation/form", { replace: true });
     };
     return (
         <div className="flex h-screen bg-[#F8F9FA]">
@@ -155,6 +171,10 @@ const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
 
                         <div className="flex justify-between items-center pt-6">
                             <button
+                                type="button"
+                                onClick={() => {
+                                    void handleDiscard();
+                                }}
                                 className="text-gray-400 font-medium hover:text-secondary transition-colors px-10 py-5 rounded-full hover:bg-gray-100"
                             >
                                 Cancel/Discard
