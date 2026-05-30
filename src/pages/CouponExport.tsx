@@ -8,6 +8,39 @@ import Swal from "sweetalert2";
 import { useCallback, useEffect, useState } from "react";
 
 const COUPON_PDF_REQUEST_TIMEOUT_MS = 300_000;
+/** Batches above this count use background ZIP export (must match API COUPON_EXPORT_SYNC_MAX). */
+const COUPON_EXPORT_SYNC_MAX = 300;
+const COUPON_EXPORT_POLL_MS = 2_000;
+
+type ExportJobStatus = {
+  jobId: string;
+  status: string;
+  progressPct: number;
+  processedCoupons: number;
+  totalCoupons: number;
+  ready: boolean;
+  failed: boolean;
+  error?: string | null;
+};
+
+async function pollExportJobUntilReady(
+  batchId: string,
+  jobId: string,
+  onProgress: (status: ExportJobStatus) => void,
+): Promise<void> {
+  for (;;) {
+    const res = await api.get<ExportJobStatus>(
+      `/coupons/batches/${encodeURIComponent(batchId)}/export/jobs/${encodeURIComponent(jobId)}`,
+    );
+    const status = res.data;
+    onProgress(status);
+    if (status.ready) return;
+    if (status.failed) {
+      throw new Error(status.error ?? "Export failed on the server");
+    }
+    await new Promise((resolve) => setTimeout(resolve, COUPON_EXPORT_POLL_MS));
+  }
+}
 
 async function exportErrorMessage(err: unknown): Promise<string> {
   if (isAxiosError(err) && !err.response) {
@@ -46,6 +79,7 @@ const CouponExport = () => {
   const navigate = useNavigate()
   const { batchId } = useParams();
   const [downloading, setDownloading] = useState(false);
+  const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
@@ -95,6 +129,23 @@ const CouponExport = () => {
     );
     const html = typeof res.data === "string" ? res.data : String(res.data);
     return new Blob([html], { type: "text/html;charset=utf-8" });
+  };
+
+  const fetchBatchPdfZip = async (jobId: string): Promise<Blob> => {
+    const id = batchId?.trim();
+    if (!id) {
+      throw new Error("Batch id is missing. Please regenerate the batch and try again.");
+    }
+    const res = await api.get<Blob>(
+      `/coupons/batches/${encodeURIComponent(id)}/export/jobs/${encodeURIComponent(jobId)}/download.zip`,
+      {
+        responseType: "blob",
+        timeout: 600_000,
+      },
+    );
+    return res.data instanceof Blob
+      ? res.data
+      : new Blob([res.data], { type: "application/zip" });
   };
 
   const fetchBatchPdfBlob = async (): Promise<Blob> => {
@@ -169,7 +220,44 @@ const CouponExport = () => {
     }
 
     setDownloading(true);
+    setExportProgress(null);
     try {
+      const quantity = Number(data?.quantity ?? 0);
+      const useAsyncExport = quantity > COUPON_EXPORT_SYNC_MAX;
+
+      if (useAsyncExport) {
+        const startRes = await api.post<ExportJobStatus>(
+          `/coupons/batches/${encodeURIComponent(id)}/export/async`,
+        );
+        const jobId = startRes.data.jobId;
+        if (!jobId) {
+          throw new Error("Export job could not be started");
+        }
+
+        await pollExportJobUntilReady(id, jobId, (status) => {
+          setExportProgress(status.progressPct ?? 0);
+        });
+
+        const blob = await fetchBatchPdfZip(jobId);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `coupon-batch-${id}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        await Swal.fire({
+          title: "Success",
+          text: `Coupon batch downloaded (${quantity.toLocaleString()} coupons in ZIP)`,
+          icon: "success",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
       const blob = await fetchBatchPdfBlob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -196,6 +284,7 @@ const CouponExport = () => {
       });
     } finally {
       setDownloading(false);
+      setExportProgress(null);
     }
   };
 
@@ -294,7 +383,13 @@ const CouponExport = () => {
                 }}
               >
                 <BiDownload size={18} />
-                {downloading ? "Downloading…" : "Download"}
+                {downloading
+                  ? exportProgress != null && exportProgress > 0
+                    ? `Generating… ${exportProgress}%`
+                    : "Generating…"
+                  : Number(data?.quantity ?? 0) > COUPON_EXPORT_SYNC_MAX
+                    ? "Download ZIP"
+                    : "Download"}
               </button>
             </div>
           </div>
