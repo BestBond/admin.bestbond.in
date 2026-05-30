@@ -1,11 +1,13 @@
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
+import ExportProgressOverlay from "../components/coupons/ExportProgressOverlay";
 import { BiDownload } from "react-icons/bi";
 import { MdArrowBack, MdClose, MdPictureAsPdf } from "react-icons/md";
 import { useNavigate, useParams } from "react-router-dom";
 import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import { useCallback, useEffect, useState } from "react";
+import "../App.css";
 
 const COUPON_PDF_REQUEST_TIMEOUT_MS = 300_000;
 const COUPON_EXPORT_SYNC_MAX = 300;
@@ -25,17 +27,22 @@ type ExportJobStatus = {
   error?: string | null;
 };
 
+type BatchExportMeta = {
+  batchId: string;
+  totalCoupons: number;
+  syncMax: number;
+  useAsyncExport: boolean;
+};
+
 function exportJobStorageKey(batchId: string): string {
   return `couponExportJob:${batchId}`;
 }
 
-function progressLabel(status: ExportJobStatus): string {
-  if (status.ready) return "Downloading ZIP…";
-  if (status.phase === "zipping") return "Packaging ZIP…";
-  const pct = status.progressPct ?? 0;
-  if (pct > 0) {
-    return `Generating… ${pct}% (${status.processedCoupons.toLocaleString()} / ${status.totalCoupons.toLocaleString()})`;
-  }
+function overlayTitle(status: ExportJobStatus | null): string {
+  if (!status) return "Preparing export…";
+  if (status.phase === "zipping") return "Packaging ZIP file…";
+  if (status.ready || status.phase === "ready") return "Downloading ZIP…";
+  if (status.progressPct > 0) return "Generating coupon PDFs…";
   return "Starting export…";
 }
 
@@ -70,16 +77,6 @@ async function pollExportJobUntilReady(
         networkRetries < COUPON_EXPORT_MAX_POLL_RETRIES
       ) {
         networkRetries += 1;
-        onProgress({
-          jobId,
-          status: "processing",
-          phase: "generating",
-          progressPct: 0,
-          processedCoupons: 0,
-          totalCoupons: 0,
-          ready: false,
-          failed: false,
-        });
         await sleep(3000);
         continue;
       }
@@ -115,17 +112,39 @@ async function downloadExportZip(batchId: string, jobId: string): Promise<Blob> 
   throw new Error("Download failed");
 }
 
+async function parseApiErrorPayload(data: unknown): Promise<string | null> {
+  if (typeof data === "string") {
+    try {
+      const j = JSON.parse(data) as { message?: string | { message?: string }; code?: string };
+      if (typeof j.message === "string") return j.message;
+      if (j.message && typeof j.message === "object" && "message" in j.message) {
+        return String(j.message.message);
+      }
+    } catch {
+      return data || null;
+    }
+  }
+  if (typeof data === "object" && data !== null && "message" in data) {
+    const msg = (data as { message: unknown }).message;
+    if (typeof msg === "string") return msg;
+    if (typeof msg === "object" && msg !== null && "message" in msg) {
+      return String((msg as { message: string }).message);
+    }
+  }
+  return null;
+}
+
 async function exportErrorMessage(err: unknown, isZip = false): Promise<string> {
   if (isAxiosError(err) && !err.response) {
     const code = err.code ?? "";
     if (code === "ECONNABORTED" || /timeout/i.test(err.message)) {
       return isZip
-        ? "Export timed out. Large batches run in the background — click Download ZIP again to resume."
+        ? "Export timed out. Click Download ZIP again — progress is saved and export will resume."
         : "PDF generation timed out. Try again or export fewer coupons.";
     }
     if (/network error|failed to fetch/i.test(err.message)) {
       return isZip
-        ? "Lost connection while export was running. The server may have restarted — click Download ZIP again to resume from the last checkpoint."
+        ? "Connection lost during export. Click Download ZIP again to resume from the last checkpoint."
         : "Connection lost. Wait a moment and try again.";
     }
   }
@@ -134,22 +153,22 @@ async function exportErrorMessage(err: unknown, isZip = false): Promise<string> 
   }
   const data = err.response.data;
   if (data instanceof Blob) {
-    try {
-      const text = await data.text();
-      try {
-        const j = JSON.parse(text) as { message?: string };
-        return (j.message ?? text) || "Export failed";
-      } catch {
-        return text || "Export failed";
-      }
-    } catch {
-      return "Export failed";
-    }
+    const text = await parseApiErrorPayload(await data.text());
+    return text || "Export failed";
   }
-  if (typeof data === "object" && data !== null && "message" in data) {
-    return String((data as { message: string }).message);
+  const text = await parseApiErrorPayload(data);
+  return text || "Export failed";
+}
+
+function isExportTooLargeError(err: unknown): boolean {
+  if (!isAxiosError(err) || !err.response) return false;
+  if (err.response.status !== 400) return false;
+  const data = err.response.data;
+  if (typeof data === "object" && data !== null) {
+    const code = (data as { code?: string }).code;
+    if (code === "EXPORT_TOO_LARGE") return true;
   }
-  return "Export failed";
+  return false;
 }
 
 const CouponExport = () => {
@@ -157,13 +176,15 @@ const CouponExport = () => {
   const { batchId } = useParams();
   const [downloading, setDownloading] = useState(false);
   const [exportStatus, setExportStatus] = useState<ExportJobStatus | null>(null);
+  const [batchMeta, setBatchMeta] = useState<BatchExportMeta | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
 
-  const data = JSON.parse(localStorage.getItem("couponData") || "{}");
-  const quantity = Number(data?.quantity ?? 0);
-  const isLargeBatch = quantity > COUPON_EXPORT_SYNC_MAX;
+  const cached = JSON.parse(localStorage.getItem("couponData") || "{}");
+  const totalCoupons = batchMeta?.totalCoupons ?? Number(cached?.quantity ?? 0);
+  const isLargeBatch = batchMeta?.useAsyncExport ?? totalCoupons > COUPON_EXPORT_SYNC_MAX;
 
   const closePdfPreview = useCallback(() => {
     setPdfPreviewOpen(false);
@@ -172,6 +193,38 @@ const CouponExport = () => {
       return null;
     });
   }, []);
+
+  useEffect(() => {
+    const id = batchId?.trim();
+    if (!id) {
+      setMetaLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await api.get<BatchExportMeta>(
+          `/coupons/batches/${encodeURIComponent(id)}/export/meta`,
+        );
+        if (!cancelled) setBatchMeta(res.data);
+      } catch {
+        /* fall back to cached quantity */
+      } finally {
+        if (!cancelled) setMetaLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [batchId]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) window.URL.revokeObjectURL(pdfPreviewUrl);
+    };
+  }, [pdfPreviewUrl]);
 
   const handleDiscard = async () => {
     const result = await Swal.fire({
@@ -188,62 +241,64 @@ const CouponExport = () => {
     navigate("/coupon-generation/form", { replace: true });
   };
 
-  useEffect(() => {
-    return () => {
-      if (pdfPreviewUrl) window.URL.revokeObjectURL(pdfPreviewUrl);
-    };
-  }, [pdfPreviewUrl]);
+  const runAsyncExport = useCallback(async (id: string, couponCount: number) => {
+    const startRes = await api.post<ExportJobStatus>(
+      `/coupons/batches/${encodeURIComponent(id)}/export/async`,
+    );
+    const jobId = startRes.data.jobId;
+    if (!jobId) throw new Error("Export job could not be started");
 
-  const runAsyncExport = useCallback(
-    async (id: string) => {
-      const startRes = await api.post<ExportJobStatus>(
-        `/coupons/batches/${encodeURIComponent(id)}/export/async`,
-      );
-      const jobId = startRes.data.jobId;
-      if (!jobId) throw new Error("Export job could not be started");
+    sessionStorage.setItem(exportJobStorageKey(id), jobId);
 
-      sessionStorage.setItem(exportJobStorageKey(id), jobId);
+    setExportStatus({
+      jobId,
+      status: "processing",
+      phase: "generating",
+      progressPct: 0,
+      processedCoupons: 0,
+      totalCoupons: couponCount,
+      ready: false,
+      failed: false,
+    });
 
-      const finalStatus = await pollExportJobUntilReady(id, jobId, (status) => {
-        setExportStatus(status);
-      });
+    const finalStatus = await pollExportJobUntilReady(id, jobId, (status) => {
+      setExportStatus(status);
+    });
 
-      setExportStatus({ ...finalStatus, phase: "ready", progressPct: 100 });
+    setExportStatus({
+      ...finalStatus,
+      phase: "ready",
+      progressPct: 100,
+      totalCoupons: couponCount,
+    });
 
-      const blob = await downloadExportZip(id, jobId);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `coupon-batch-${id}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+    const blob = await downloadExportZip(id, jobId);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `coupon-batch-${id}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
 
-      sessionStorage.removeItem(exportJobStorageKey(id));
+    sessionStorage.removeItem(exportJobStorageKey(id));
 
-      await Swal.fire({
-        title: "Success",
-        text: `Coupon batch downloaded (${quantity.toLocaleString()} coupons in ZIP)`,
-        icon: "success",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    },
-    [quantity],
-  );
+    await Swal.fire({
+      title: "Success",
+      text: `Coupon batch downloaded (${couponCount.toLocaleString()} coupons in ZIP)`,
+      icon: "success",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }, []);
 
   const fetchBatchPreviewHtml = async (): Promise<Blob> => {
     const id = batchId?.trim();
-    if (!id) {
-      throw new Error("Batch id is missing. Please regenerate the batch and try again.");
-    }
+    if (!id) throw new Error("Batch id is missing. Please regenerate the batch and try again.");
     const res = await api.get<string>(
       `/coupons/batches/${encodeURIComponent(id)}/preview.html`,
-      {
-        responseType: "text",
-        timeout: COUPON_PDF_REQUEST_TIMEOUT_MS,
-      },
+      { responseType: "text", timeout: COUPON_PDF_REQUEST_TIMEOUT_MS },
     );
     const html = typeof res.data === "string" ? res.data : String(res.data);
     return new Blob([html], { type: "text/html;charset=utf-8" });
@@ -251,15 +306,10 @@ const CouponExport = () => {
 
   const fetchBatchPdfBlob = async (): Promise<Blob> => {
     const id = batchId?.trim();
-    if (!id) {
-      throw new Error("Batch id is missing. Please regenerate the batch and try again.");
-    }
+    if (!id) throw new Error("Batch id is missing. Please regenerate the batch and try again.");
     const res = await api.get<Blob>(
       `/coupons/batches/${encodeURIComponent(id)}/export.pdf`,
-      {
-        responseType: "blob",
-        timeout: COUPON_PDF_REQUEST_TIMEOUT_MS,
-      },
+      { responseType: "blob", timeout: COUPON_PDF_REQUEST_TIMEOUT_MS },
     );
     return res.data instanceof Blob
       ? res.data
@@ -288,11 +338,7 @@ const CouponExport = () => {
       setPdfPreviewOpen(true);
     } catch (error) {
       const text = await exportErrorMessage(error);
-      await Swal.fire({
-        title: "Preview failed",
-        text,
-        icon: "error",
-      });
+      await Swal.fire({ title: "Preview failed", text, icon: "error" });
     } finally {
       setPdfPreviewLoading(false);
     }
@@ -309,48 +355,69 @@ const CouponExport = () => {
       return;
     }
 
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      await Swal.fire({
-        title: "Export failed",
-        text: "Not authenticated",
-        icon: "error",
-      });
+    if (!localStorage.getItem("accessToken")) {
+      await Swal.fire({ title: "Export failed", text: "Not authenticated", icon: "error" });
       return;
     }
 
     setDownloading(true);
     setExportStatus(null);
+
+    let meta = batchMeta;
+    if (!meta) {
+      try {
+        const res = await api.get<BatchExportMeta>(
+          `/coupons/batches/${encodeURIComponent(id)}/export/meta`,
+        );
+        meta = res.data;
+        setBatchMeta(meta);
+      } catch {
+        meta = {
+          batchId: id,
+          totalCoupons,
+          syncMax: COUPON_EXPORT_SYNC_MAX,
+          useAsyncExport: totalCoupons > COUPON_EXPORT_SYNC_MAX,
+        };
+      }
+    }
+
+    const couponCount = meta.totalCoupons;
+    const useAsync = meta.useAsyncExport;
+
     try {
-      if (isLargeBatch) {
-        await runAsyncExport(id);
+      if (useAsync) {
+        await runAsyncExport(id, couponCount);
         return;
       }
 
-      const blob = await fetchBatchPdfBlob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `coupon-batch-${id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      try {
+        const blob = await fetchBatchPdfBlob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `coupon-batch-${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
 
-      await Swal.fire({
-        title: "Success",
-        text: "Coupon batch downloaded",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+        await Swal.fire({
+          title: "Success",
+          text: "Coupon batch downloaded",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch (syncErr) {
+        if (isExportTooLargeError(syncErr)) {
+          await runAsyncExport(id, couponCount || totalCoupons);
+          return;
+        }
+        throw syncErr;
+      }
     } catch (error) {
-      const text = await exportErrorMessage(error, isLargeBatch);
-      await Swal.fire({
-        title: "Export failed",
-        text,
-        icon: "error",
-      });
+      const text = await exportErrorMessage(error, useAsync);
+      await Swal.fire({ title: "Export failed", text, icon: "error" });
     } finally {
       setDownloading(false);
       setExportStatus(null);
@@ -359,11 +426,14 @@ const CouponExport = () => {
 
   const downloadButtonLabel = downloading
     ? exportStatus
-      ? progressLabel(exportStatus)
-      : "Generating…"
+      ? overlayTitle(exportStatus)
+      : "Preparing…"
     : isLargeBatch
       ? "Download ZIP"
       : "Download";
+
+  const displayQuantity = totalCoupons || cached?.quantity;
+  const displayPoints = cached?.points ?? 0;
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
@@ -371,13 +441,9 @@ const CouponExport = () => {
       <div className="flex-1 overflow-auto flex flex-col">
         <Header title="Preview Coupons" />
         <div className="min-h-screen bg-[#F5F6F8] p-6">
-
           <div className="max-w-6xl mx-auto p-8 space-y-6">
-
             <div className="flex items-center gap-2 text-gray-500 cursor-pointer mb-6">
-              <button
-                className="hover:bg-white rounded-full transition-colors text-[#1E2633]"
-              >
+              <button className="hover:bg-white rounded-full transition-colors text-[#1E2633]">
                 <MdArrowBack size={22} onClick={() => navigate(-1)} className="cursor-pointer" />
               </button>
               <span className="text-[18px] font-semibold text-text-primary">Export Batch</span>
@@ -388,31 +454,30 @@ const CouponExport = () => {
             </h1>
 
             <div className="bg-white rounded-3xl shadow-sm p-8 mb-8 relative">
-
               <div className="space-y-6">
-
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold">Batch ID</p>
-                  <p className="text-lg font-semibold text-[#1E2633]">#{data?.batchId}</p>
+                  <p className="text-lg font-semibold text-[#1E2633]">#{batchId ?? cached?.batchId}</p>
                 </div>
-
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold">Creation Date</p>
-                  <p className="text-sm font-medium text-[#1E2633]">{data?.createdAt?.substring(0, 10)}</p>
+                  <p className="text-sm font-medium text-[#1E2633]">
+                    {cached?.createdAt?.substring(0, 10) ?? "—"}
+                  </p>
                 </div>
-
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold">Total Coupons</p>
-                  <p className="text-2xl font-bold text-[#1E2633]">{data?.quantity}</p>
+                  <p className="text-2xl font-bold text-[#1E2633]">
+                    {metaLoading ? "…" : displayQuantity?.toLocaleString?.() ?? displayQuantity}
+                  </p>
                 </div>
-
                 <div>
                   <p className="text-xs text-orange-500 uppercase font-semibold">Total Value</p>
-                  <p className="text-3xl font-bold text-orange-600 tracking-wide">{data?.quantity * data?.points} Pts</p>
+                  <p className="text-3xl font-bold text-orange-600 tracking-wide">
+                    {(Number(displayQuantity) * Number(displayPoints)).toLocaleString()} Pts
+                  </p>
                 </div>
-
               </div>
-
               <div className="absolute right-6 top-6 text-gray-200 text-5xl">
                 <img src="/wallet.svg" alt="wallet" />
               </div>
@@ -420,18 +485,16 @@ const CouponExport = () => {
 
             {isLargeBatch ? (
               <p className="text-sm text-gray-500 text-center -mt-2 mb-2">
-                Large batches export as a ZIP in the background. Keep this tab open — you can retry if interrupted and it will resume.
+                Large batches export as a ZIP in the background. Keep this tab open — retry resumes from the last checkpoint.
               </p>
             ) : null}
 
             <div className="flex flex-col gap-3">
               <button
                 type="button"
-                disabled={pdfPreviewLoading || downloading}
+                disabled={pdfPreviewLoading || downloading || metaLoading}
                 className="w-full border-2 border-orange-500 bg-white py-4 text-orange-600 rounded-full font-semibold flex items-center justify-center gap-2 shadow-sm hover:bg-orange-50 disabled:opacity-60 transition-colors"
-                onClick={() => {
-                  void handleViewPdf();
-                }}
+                onClick={() => void handleViewPdf()}
               >
                 <MdPictureAsPdf size={22} />
                 {pdfPreviewLoading ? "Loading preview…" : "View PDF"}
@@ -439,11 +502,9 @@ const CouponExport = () => {
 
               <button
                 type="button"
-                disabled={downloading || pdfPreviewLoading}
+                disabled={downloading || pdfPreviewLoading || metaLoading}
                 className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-70 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-2 shadow-lg"
-                onClick={() => {
-                  void handleExportCoupons();
-                }}
+                onClick={() => void handleExportCoupons()}
               >
                 <BiDownload size={18} />
                 {downloadButtonLabel}
@@ -454,17 +515,23 @@ const CouponExport = () => {
           <div className="text-center mt-4">
             <button
               type="button"
-              onClick={() => {
-                void handleDiscard();
-              }}
+              onClick={() => void handleDiscard()}
               className="text-sm text-orange-500 font-medium hover:underline"
             >
               Cancel / Discard →
             </button>
           </div>
-
         </div>
       </div>
+
+      <ExportProgressOverlay
+        visible={downloading && isLargeBatch}
+        progressPct={exportStatus?.progressPct ?? 0}
+        phase={exportStatus?.phase}
+        processedCoupons={exportStatus?.processedCoupons ?? 0}
+        totalCoupons={exportStatus?.totalCoupons ?? totalCoupons}
+        title={overlayTitle(exportStatus)}
+      />
 
       {pdfPreviewOpen && pdfPreviewUrl ? (
         <div
