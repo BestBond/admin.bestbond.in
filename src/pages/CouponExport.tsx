@@ -81,6 +81,22 @@ const CouponExport = () => {
     };
   }, [pdfPreviewUrl]);
 
+  const fetchBatchPreviewHtml = async (): Promise<Blob> => {
+    const id = batchId?.trim();
+    if (!id) {
+      throw new Error("Batch id is missing. Please regenerate the batch and try again.");
+    }
+    const res = await api.get<string>(
+      `/coupons/batches/${encodeURIComponent(id)}/preview.html`,
+      {
+        responseType: "text",
+        timeout: COUPON_PDF_REQUEST_TIMEOUT_MS,
+      },
+    );
+    const html = typeof res.data === "string" ? res.data : String(res.data);
+    return new Blob([html], { type: "text/html;charset=utf-8" });
+  };
+
   const fetchBatchPdfBlob = async (): Promise<Blob> => {
     const id = batchId?.trim();
     if (!id) {
@@ -111,7 +127,7 @@ const CouponExport = () => {
 
     setPdfPreviewLoading(true);
     try {
-      const blob = await fetchBatchPdfBlob();
+      const blob = await fetchBatchPreviewHtml();
       const url = window.URL.createObjectURL(blob);
       setPdfPreviewUrl((prev) => {
         if (prev) window.URL.revokeObjectURL(prev);
@@ -308,11 +324,11 @@ const CouponExport = () => {
           onClick={closePdfPreview}
         >
           <div
-            className="flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="flex h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-[#151515] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
-              <h2 id="pdf-preview-title" className="text-base font-semibold text-[#1E2633] sm:text-lg">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+              <h2 id="pdf-preview-title" className="text-base font-semibold text-white sm:text-lg">
                 Coupon batch preview
               </h2>
               <div className="flex items-center gap-2">
@@ -320,24 +336,24 @@ const CouponExport = () => {
                   href={pdfPreviewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hidden rounded-full px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-50 sm:inline-block"
+                  className="hidden rounded-full px-3 py-1.5 text-sm font-medium text-orange-400 hover:bg-white/10 sm:inline-block"
                 >
                   Open in new tab
                 </a>
                 <button
                   type="button"
                   onClick={closePdfPreview}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#1E2633]"
-                  aria-label="Close PDF preview"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Close preview"
                 >
                   <MdClose size={24} />
                 </button>
               </div>
             </div>
             <iframe
-              title="Coupon batch PDF preview"
+              title="Coupon batch preview"
               src={pdfPreviewUrl}
-              className="min-h-0 w-full flex-1 border-0 bg-gray-100"
+              className="min-h-0 w-full flex-1 border-0 bg-[#151515]"
             />
           </div>
         </div>
