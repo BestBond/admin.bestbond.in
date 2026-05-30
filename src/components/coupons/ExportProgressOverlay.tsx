@@ -6,11 +6,20 @@ type ExportProgressOverlayProps = {
   totalCoupons: number;
   title: string;
   subtitle?: string;
+  fileSizeBytes?: number;
 };
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
 
 function phaseMessage(phase: string | undefined, title: string): string {
   if (phase === "zipping") return "Packaging ZIP file…";
-  if (phase === "ready") return "Downloading ZIP…";
+  if (phase === "downloading") return "Starting download…";
+  if (phase === "ready") return "Preparing download…";
   return title;
 }
 
@@ -22,6 +31,7 @@ export default function ExportProgressOverlay({
   totalCoupons,
   title,
   subtitle,
+  fileSizeBytes,
 }: ExportProgressOverlayProps) {
   if (!visible) return null;
 
@@ -29,6 +39,14 @@ export default function ExportProgressOverlay({
   const circumference = 2 * Math.PI * 42;
   const dashOffset = circumference * (1 - pct / 100);
   const message = phaseMessage(phase, title);
+  const isDownloading = phase === "downloading";
+
+  const defaultSubtitle =
+    phase === "downloading" && fileSizeBytes
+      ? `${formatFileSize(fileSizeBytes)} — check your Downloads folder`
+      : totalCoupons > 0
+        ? `${processedCoupons.toLocaleString()} / ${totalCoupons.toLocaleString()} coupons`
+        : undefined;
 
   return (
     <div
@@ -79,10 +97,8 @@ export default function ExportProgressOverlay({
             <p className="text-lg font-semibold text-[#1E2633]">{message}</p>
             {subtitle ? (
               <p className="text-sm text-gray-500">{subtitle}</p>
-            ) : totalCoupons > 0 ? (
-              <p className="text-sm text-gray-500 tabular-nums">
-                {processedCoupons.toLocaleString()} / {totalCoupons.toLocaleString()} coupons
-              </p>
+            ) : defaultSubtitle ? (
+              <p className="text-sm text-gray-500 tabular-nums">{defaultSubtitle}</p>
             ) : null}
           </div>
 
@@ -96,7 +112,9 @@ export default function ExportProgressOverlay({
           </div>
 
           <p className="text-xs text-center text-gray-400 leading-relaxed">
-            Keep this tab open. Large batches can take a while — you can retry if interrupted and export will resume.
+            {isDownloading
+              ? "The file streams directly to your device — no need to wait on this screen."
+              : "Keep this tab open. Large batches can take a while — you can retry if interrupted and export will resume."}
           </p>
         </div>
       </div>

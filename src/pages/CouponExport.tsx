@@ -22,6 +22,7 @@ type ExportJobStatus = {
   progressPct: number;
   processedCoupons: number;
   totalCoupons: number;
+  fileSizeBytes?: number | null;
   ready: boolean;
   failed: boolean;
   error?: string | null;
@@ -41,9 +42,17 @@ function exportJobStorageKey(batchId: string): string {
 function overlayTitle(status: ExportJobStatus | null): string {
   if (!status) return "Preparing export…";
   if (status.phase === "zipping") return "Packaging ZIP file…";
-  if (status.ready || status.phase === "ready") return "Downloading ZIP…";
+  if (status.phase === "downloading") return "Starting download…";
+  if (status.ready || status.phase === "ready") return "Preparing download…";
   if (status.progressPct > 0) return "Generating coupon PDFs…";
   return "Starting export…";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  if (bytes >= 1e3) return `${(bytes / 1e3).toFixed(1)} KB`;
+  return `${bytes} B`;
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -86,30 +95,24 @@ async function pollExportJobUntilReady(
   }
 }
 
-async function downloadExportZip(batchId: string, jobId: string): Promise<Blob> {
-  const token = localStorage.getItem("accessToken");
-  const base = import.meta.env.VITE_API_URL as string;
-  const url = `${base}/coupons/batches/${encodeURIComponent(batchId)}/export/jobs/${encodeURIComponent(jobId)}/download.zip`;
+async function triggerBrowserZipDownload(
+  batchId: string,
+  jobId: string,
+): Promise<{ fileSizeBytes: number }> {
+  const res = await api.get<{ path: string; fileSizeBytes: number }>(
+    `/coupons/batches/${encodeURIComponent(batchId)}/export/jobs/${encodeURIComponent(jobId)}/download-link`,
+  );
+  const base = (import.meta.env.VITE_API_URL as string).replace(/\/$/, "");
+  const downloadUrl = `${base}${res.data.path}`;
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `Download failed (${res.status})`);
-      }
-      return await res.blob();
-    } catch (err) {
-      if (attempt < 4) {
-        await sleep(2000);
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("Download failed");
+  const a = document.createElement("a");
+  a.href = downloadUrl;
+  a.download = `coupon-batch-${batchId}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  return { fileSizeBytes: res.data.fileSizeBytes };
 }
 
 async function parseApiErrorPayload(data: unknown): Promise<string | null> {
@@ -267,28 +270,20 @@ const CouponExport = () => {
 
     setExportStatus({
       ...finalStatus,
-      phase: "ready",
+      phase: "downloading",
       progressPct: 100,
       totalCoupons: couponCount,
     });
 
-    const blob = await downloadExportZip(id, jobId);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `coupon-batch-${id}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    const { fileSizeBytes } = await triggerBrowserZipDownload(id, jobId);
 
     sessionStorage.removeItem(exportJobStorageKey(id));
 
     await Swal.fire({
-      title: "Success",
-      text: `Coupon batch downloaded (${couponCount.toLocaleString()} coupons in ZIP)`,
+      title: "Download started",
+      text: `Your browser is saving ${formatFileSize(fileSizeBytes)} (${couponCount.toLocaleString()} coupons). Check your Downloads folder.`,
       icon: "success",
-      timer: 2000,
+      timer: 4000,
       showConfirmButton: false,
     });
   }, []);
@@ -531,6 +526,7 @@ const CouponExport = () => {
         processedCoupons={exportStatus?.processedCoupons ?? 0}
         totalCoupons={exportStatus?.totalCoupons ?? totalCoupons}
         title={overlayTitle(exportStatus)}
+        fileSizeBytes={exportStatus?.fileSizeBytes ?? undefined}
       />
 
       {pdfPreviewOpen && pdfPreviewUrl ? (
