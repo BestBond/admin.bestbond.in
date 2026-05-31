@@ -38,7 +38,7 @@ const UserList = () => {
 
   const professionFilters = [
     { value: "all", label: "All" },
-    { value: "Contractor/Painter", label: "Contractor / Painter" },
+    { value: "Contractor/Worker", label: "Contractor / Worker" },
     { value: "Dealer", label: "Dealer" },
   ] as const;
 
