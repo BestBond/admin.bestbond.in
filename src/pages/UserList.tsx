@@ -40,6 +40,7 @@ const UserList = () => {
     { value: "all", label: "All" },
     { value: "Contractor/Painter", label: "Contractor / Painter" },
     { value: "Dealer", label: "Dealer" },
+    { value: "Ops Admin", label: "Ops Admin" },
   ] as const;
 
 
@@ -118,7 +119,7 @@ const UserList = () => {
                           </div>
                           <div>
                             <p className="text-lg font-bold text-[#1E2633] group-hover:text-primary transition-colors font-bricolage">{user.name}</p>
-                            <p className="text-sm font-medium text-gray-400">{user.profession ?? "—"}</p>
+                            <p className="text-sm font-medium text-gray-400">{user.profession || "—"}</p>
                           </div>
                         </div>
                         <div className="text-right">
