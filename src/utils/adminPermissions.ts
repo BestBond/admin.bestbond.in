@@ -14,3 +14,13 @@ export function seesFullRedemptionApprovalQueue(): boolean {
     return false;
   }
 }
+
+export function hasAdminPermission(key: string): boolean {
+  try {
+    const raw = localStorage.getItem("userPermissions");
+    const perms = raw ? JSON.parse(raw) : [];
+    return Array.isArray(perms) && perms.includes(key);
+  } catch {
+    return false;
+  }
+}

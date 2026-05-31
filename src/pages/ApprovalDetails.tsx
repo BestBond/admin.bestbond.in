@@ -5,13 +5,16 @@ import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import { MdOutlineAccountCircle, MdFlag, MdInfo } from "react-icons/md";
 import api, { isAxiosError } from "../utils/api";
+import Swal from "sweetalert2";
 import { rewardImageSrc } from "../utils/rewardImage";
+import { hasAdminPermission } from "../utils/adminPermissions";
 
 /** Matches GET /admin/redemptions/:id (admin.service getRedemptionRequestById). */
 interface RedemptionDetail {
   id: string;
   code: string;
   status: string;
+  channel?: string;
   statusLabel: string;
   statusMessage: string | null;
   flagged: boolean;
@@ -77,7 +80,7 @@ const ApprovalDetails = () => {
     void fetchRequestDetail({ silent: true });
   });
 
-  const handleAction = async (action: 'approve' | 'reject') => {
+  const handleAction = async (action: 'approve' | 'reject' | 'deliver') => {
     if (!request) return;
 
     setIsProcessing(true);
@@ -86,6 +89,16 @@ const ApprovalDetails = () => {
 
       if (action === 'approve') {
         setShowSuccessModal(true);
+      } else if (action === 'deliver') {
+        await fetchRequestDetail({ silent: true });
+        Swal.fire({
+          title: "Marked as delivered",
+          text: `Request ${request.code} is now complete.`,
+          icon: "success",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        navigate('/approvals');
       } else {
         navigate('/approvals');
       }
@@ -134,6 +147,12 @@ const ApprovalDetails = () => {
   const rewardPoints = Number(request.reward.points ?? 0);
   const rewardImgSrc = rewardImageSrc(request.reward.imageUrl);
   const canApproveReject = request.status === "PROCESSING";
+  const canDeliver =
+    request.status === "SHIPPED" && hasAdminPermission("redemptions.deliver");
+  const deliverLabel =
+    request.channel === "DEALER_STORE"
+      ? "Mark as Delivered to Dealer"
+      : "Mark as Delivered to Customer";
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
@@ -243,11 +262,26 @@ const ApprovalDetails = () => {
 
             {/* Actions Footer */}
             <div className="flex flex-col gap-4 pt-4 pb-12">
-              {!canApproveReject ? (
+              {!canApproveReject && !canDeliver ? (
                 <p className="text-center text-sm text-gray-500">
-                  Approve and reject are only available while this request is processing.
+                  This request is no longer awaiting approval or delivery action.
                 </p>
               ) : null}
+              {canDeliver ? (
+                <button
+                  type="button"
+                  onClick={() => handleAction("deliver")}
+                  disabled={isProcessing}
+                  className="w-full bg-[#1E2633] text-white py-6 rounded-[28px] font-bold text-lg shadow-xl hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {isProcessing ? (
+                    <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    deliverLabel
+                  )}
+                </button>
+              ) : null}
+              {canApproveReject ? (
               <div className="flex gap-6">
               <button 
                 type="button"
@@ -270,6 +304,7 @@ const ApprovalDetails = () => {
                 Reject Request
               </button>
               </div>
+              ) : null}
             </div>
           </div>
         </div>
