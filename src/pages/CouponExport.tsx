@@ -7,7 +7,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import api, { isAxiosError } from "../utils/api";
 import Swal from "sweetalert2";
 import { useCallback, useEffect, useState } from "react";
-import { fetchCouponBatchPreviewHtml } from "../utils/couponPreview";
 import "../App.css";
 
 const COUPON_PDF_REQUEST_TIMEOUT_MS = 300_000;
@@ -292,7 +291,11 @@ const CouponExport = () => {
   const fetchBatchPreviewHtml = async (): Promise<Blob> => {
     const id = batchId?.trim();
     if (!id) throw new Error("Batch id is missing. Please regenerate the batch and try again.");
-    const html = await fetchCouponBatchPreviewHtml(id);
+    const res = await api.get<string>(
+      `/coupons/batches/${encodeURIComponent(id)}/preview.html`,
+      { responseType: "text", timeout: COUPON_PDF_REQUEST_TIMEOUT_MS },
+    );
+    const html = typeof res.data === "string" ? res.data : String(res.data);
     return new Blob([html], { type: "text/html;charset=utf-8" });
   };
 
