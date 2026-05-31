@@ -4,18 +4,13 @@ type CouponPrintPreviewFrameProps = {
   html: string | null;
   loading?: boolean;
   title: string;
-  /** Coupon only — transparent, no dark wrapper (modal). */
-  bare?: boolean;
   className?: string;
 };
-
-const COUPON_ASPECT = "101 / 38";
 
 const CouponPrintPreviewFrame = ({
   html,
   loading = false,
   title,
-  bare = false,
   className,
 }: CouponPrintPreviewFrameProps) => {
   const [src, setSrc] = useState<string | null>(null);
@@ -39,16 +34,6 @@ const CouponPrintPreviewFrame = ({
   }, [html]);
 
   if (loading) {
-    if (bare) {
-      return (
-        <div
-          className="flex w-full items-center justify-center text-sm text-white/80"
-          style={{ aspectRatio: COUPON_ASPECT }}
-        >
-          Loading…
-        </div>
-      );
-    }
     return (
       <div
         className={
@@ -62,18 +47,6 @@ const CouponPrintPreviewFrame = ({
   }
 
   if (!src) return null;
-
-  if (bare) {
-    return (
-      <div className="relative w-full" style={{ aspectRatio: COUPON_ASPECT }}>
-        <iframe
-          title={title}
-          src={src}
-          className="absolute inset-0 h-full w-full border-0 bg-transparent"
-        />
-      </div>
-    );
-  }
 
   return (
     <iframe
