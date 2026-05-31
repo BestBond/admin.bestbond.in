@@ -1,15 +1,12 @@
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { MdClose, MdContentCopy } from "react-icons/md";
 import CouponPrintPreviewFrame from "../components/coupons/CouponPrintPreviewFrame";
-import {
-  fetchCouponBatchPreviewHtml,
-  fetchCouponFacePreviewHtml,
-} from "../utils/couponPreview";
+import { fetchCouponFacePreviewHtml } from "../utils/couponPreview";
 
 type Coupon = {
   id: string | number;
@@ -51,8 +48,6 @@ const getCachedCouponMeta = (batchId: string): CouponMeta | null => {
 const CouponPreview = () => {
   const [data, setData] = useState<CouponBatchData | null>(null);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
-  const [batchPreviewHtml, setBatchPreviewHtml] = useState<string | null>(null);
-  const [batchPreviewLoading, setBatchPreviewLoading] = useState(false);
   const [facePreviewHtml, setFacePreviewHtml] = useState<string | null>(null);
   const [facePreviewLoading, setFacePreviewLoading] = useState(false);
   const { batchId } = useParams();
@@ -77,24 +72,6 @@ const CouponPreview = () => {
     }
     void fetchListBatchCoupon();
   }, [batchId]);
-
-  const loadBatchPrintPreview = useCallback(async () => {
-    const id = batchId?.trim();
-    if (!id) return;
-    setBatchPreviewLoading(true);
-    try {
-      setBatchPreviewHtml(await fetchCouponBatchPreviewHtml(id));
-    } catch (error) {
-      console.error("BATCH PREVIEW ERROR", error);
-      setBatchPreviewHtml(null);
-    } finally {
-      setBatchPreviewLoading(false);
-    }
-  }, [batchId]);
-
-  useEffect(() => {
-    void loadBatchPrintPreview();
-  }, [loadBatchPrintPreview]);
 
   useEffect(() => {
     const id = batchId?.trim();
@@ -175,24 +152,11 @@ const CouponPreview = () => {
             </div>
 
             <div className="w-full mt-4">
-              <p className="text-sm font-semibold text-gray-500 mb-4">
-                Live Preview (same as PDF)
-              </p>
-
-              <div className="bg-[#151515] rounded-3xl p-4 sm:p-6 overflow-hidden">
-                <CouponPrintPreviewFrame
-                  html={batchPreviewHtml}
-                  loading={batchPreviewLoading}
-                  title="Coupon batch print preview"
-                  className="w-full min-h-[320px] max-h-[min(70vh,720px)] border-0 bg-[#151515]"
-                />
-              </div>
-
-              <div className="bg-white rounded-3xl p-5 mt-4">
+              <div className="bg-white rounded-3xl p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
                   Coupon codes — tap to preview
                 </p>
-                <div className="max-h-[280px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                <div className="max-h-[480px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                   {data?.items?.map((coupon) => (
                     <div
                       key={coupon.id}
@@ -261,23 +225,23 @@ const CouponPreview = () => {
           onClick={() => setSelectedCoupon(null)}
         >
           <div
-            className="relative mx-auto w-full max-w-[min(96vw,520px)]"
+            className="relative mx-auto w-full max-w-[min(96vw,560px)]"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setSelectedCoupon(null)}
-              className="absolute right-0 top-0 z-[60] flex h-10 w-10 -translate-y-[calc(100%+10px)] items-center justify-center rounded-full bg-white text-gray-500 shadow-lg ring-1 ring-black/10 transition-all hover:bg-gray-100 hover:text-text-primary sm:h-11 sm:w-11"
+              className="absolute -right-1 -top-12 z-[60] flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-500 shadow-lg ring-1 ring-black/10 transition-all hover:bg-gray-100 hover:text-text-primary sm:h-11 sm:w-11"
               aria-label="Close coupon preview"
             >
               <MdClose size={22} />
             </button>
 
             <CouponPrintPreviewFrame
+              bare
               html={facePreviewHtml}
               loading={facePreviewLoading}
               title={`Coupon ${selectedCoupon.code} print preview`}
-              className="w-full min-h-[160px] border-0 bg-[#151515] rounded-2xl"
             />
           </div>
         </div>
