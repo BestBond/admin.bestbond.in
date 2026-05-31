@@ -22,7 +22,6 @@ interface RedemptionRequest {
 const ApprovalList = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<RedemptionRequest[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState("HIGH_VALUE");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
@@ -34,8 +33,6 @@ const ApprovalList = () => {
   );
   const fullRedemptionQueue = listChannelFilter === undefined;
 
-  const isOutForDelivery = statusFilter === "OUT_FOR_DELIVERY";
-
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
@@ -44,20 +41,22 @@ const ApprovalList = () => {
         params: {
           sort: sortBy,
           flagged: flaggedOnly ? "true" : undefined,
-          status: isOutForDelivery ? "SHIPPED" : "PROCESSING",
+          status:
+            statusFilter === "OUT_FOR_DELIVERY"
+              ? "OUT_FOR_DELIVERY"
+              : "PROCESSING",
           ...(channel ? { channel } : {}),
           take: 20,
           offset: 0,
         },
       });
       setRequests(res.data.items || []);
-      setTotal(res.data.total ?? 0);
     } catch (error) {
       console.error("FETCH REQUESTS ERROR", error);
     } finally {
       setLoading(false);
     }
-  }, [sortBy, flaggedOnly, listChannelFilter, isOutForDelivery]);
+  }, [sortBy, flaggedOnly, listChannelFilter, statusFilter]);
 
   useEffect(() => {
     fetchRequests();
@@ -93,22 +92,12 @@ const ApprovalList = () => {
             {/* Title Section */}
             <div>
               <h2 className="text-4xl font-bold text-text-primary tracking-tight font-bricolage">
-                {isOutForDelivery
-                  ? fullRedemptionQueue
-                    ? "Rewards out for delivery"
-                    : "Dealer rewards out for delivery"
-                  : fullRedemptionQueue
-                    ? "Pending redemption requests"
-                    : "Pending dealer redemptions"}
+                {fullRedemptionQueue ? "Pending redemption requests" : "Pending dealer redemptions"}
               </h2>
               <p className="text-secondary text-base mt-3 font-medium max-w-2xl">
-                {isOutForDelivery
-                  ? fullRedemptionQueue
-                    ? "Approved rewards awaiting physical delivery to contractors, painters, or dealers."
-                    : "Approved dealer store redemptions awaiting delivery confirmation."
-                  : fullRedemptionQueue
-                    ? "Contractor and painter app requests and dealer store redemptions await your review before dispatch."
-                    : "Dealer points are debited when store staff records the redemption; approve here before dispatch."}
+                {fullRedemptionQueue
+                  ? "Contractor and painter app requests and dealer store redemptions await your review before dispatch."
+                  : "Dealer points are debited when store staff records the redemption; approve here before dispatch."}
               </p>
             </div>
 
@@ -229,14 +218,10 @@ const ApprovalList = () => {
                       <div className="mt-8 pt-8 border-t border-gray-50 flex justify-between items-center">
                         <div className="flex items-center gap-3 text-[#F26522] text-[10px] font-bold uppercase tracking-[0.2em]">
                           <span className="w-2 h-2 bg-[#F26522] rounded-full animate-pulse"></span>
-                          {req.status === "SHIPPED"
-                            ? "Out for delivery"
-                            : req.status === "DELIVERED"
-                              ? "Delivered"
-                              : "Pending review"}
+                          Pending Review (2h ago)
                         </div>
                         <div className="flex items-center gap-2 text-[#1E2633] text-sm font-bold group-hover:translate-x-1 transition-transform">
-                          {req.status === "SHIPPED" ? "View" : "Review"}
+                          Review
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -246,11 +231,7 @@ const ApprovalList = () => {
                   ))}
                   {requests.length === 0 && (
                     <div className="bg-white rounded-[40px] p-24 text-center text-gray-400 border border-dashed border-gray-200 shadow-inner">
-                      <p className="text-xl font-medium italic">
-                        {isOutForDelivery
-                          ? "No rewards out for delivery."
-                          : "No pending approval requests found."}
-                      </p>
+                      <p className="text-xl font-medium italic">No pending approval requests found.</p>
                     </div>
                   )}
                 </>
@@ -263,8 +244,7 @@ const ApprovalList = () => {
                 Load More Requests
               </button>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-                Showing {requests.length} of {total}{" "}
-                {isOutForDelivery ? "out for delivery" : "pending"} requests
+                Showing {requests.length} of 28 pending high-ticket requests
               </p>
             </div>
           </div>
