@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { getCouponTierTheme } from "../../constants/couponTiers";
+import { buildCouponQrUrl } from "../../utils/couponLink";
 
 const QR_SIZE = 29;
 const QR_DATA_CODEWORDS = 44;
@@ -321,7 +322,7 @@ const QrCodeSvg = ({ value, className }: { value: string; className?: string }) 
 
 const GeneratedCouponCard = ({ couponId, couponCode, points }: GeneratedCouponCardProps) => {
     const idLabel = couponCode || couponId;
-    const qrValue = couponCode || couponId;
+    const qrValue = buildCouponQrUrl(couponCode || couponId);
     const pointsFormatted = Number.isFinite(points) ? points.toLocaleString("en-US") : "0";
     const tier = getCouponTierTheme(points);
 
