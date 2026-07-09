@@ -9,14 +9,12 @@ export function normalizeLocalPhoneDigits(
   let d = raw.replace(/\D/g, "");
   const cc = countryCode.replace(/\D/g, "");
 
-  if (cc === "91" && d.startsWith("91") && d.length > 10) {
+  if (cc === "91" && d.startsWith("91") && d.length >= 12) {
     d = d.slice(2);
   }
-  while (d.startsWith("0") && d.length > 10) {
+  // India trunk prefix: 0 + 10-digit mobile (e.g. 09611299129)
+  if (cc === "91" && d.length === 11 && d.startsWith("0")) {
     d = d.slice(1);
-  }
-  if (d.length > 10) {
-    d = d.slice(-10);
   }
   return d.slice(0, 10);
 }
