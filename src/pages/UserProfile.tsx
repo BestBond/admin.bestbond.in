@@ -3,7 +3,7 @@ import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisibl
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
-import { MdBlock } from "react-icons/md";
+import { MdBlock, MdDeleteForever } from "react-icons/md";
 import api from "../utils/api";
 import Swal from "sweetalert2";
 import type { AdminUserDetail } from "../utils/types";
@@ -18,6 +18,16 @@ function canSuspendAccounts(): boolean {
   }
 }
 
+function canDeleteAccounts(): boolean {
+  try {
+    const raw = localStorage.getItem("userPermissions");
+    const p = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(p) && p.includes("users.delete");
+  } catch {
+    return false;
+  }
+}
+
 const UserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -26,6 +36,9 @@ const UserProfile = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [suspensionReason, setSuspensionReason] = useState("");
   const [isSuspending, setIsSuspending] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const fetchUserDetail = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -84,6 +97,32 @@ const UserProfile = () => {
     setIsModalOpen(true);
   };
 
+  const handleDeleteSubmit = async () => {
+    if (!user) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/admin/users/${user.id}`);
+      setIsDeleteModalOpen(false);
+      setDeleteConfirmText("");
+      await Swal.fire({
+        title: 'Deleted!',
+        text: 'User account has been permanently deleted.',
+        icon: 'success',
+        confirmButtonColor: '#1E2633',
+        customClass: { popup: 'rounded-[32px]' },
+      });
+      navigate('/users');
+    } catch (error) {
+      console.error("DELETE USER ERROR", error);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Failed to delete account';
+      Swal.fire('Error', message, 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-[#F8F9FA]">
@@ -100,6 +139,7 @@ const UserProfile = () => {
   const displayLabel = user.displayName || user.fullName?.trim() || "User";
   const isActive = user.status === "ACTIVE";
   const showSuspend = canSuspendAccounts();
+  const showDelete = canDeleteAccounts();
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
@@ -145,16 +185,28 @@ const UserProfile = () => {
                   </div>
                 </div>
               </div>
-              {showSuspend ? (
-                <button
-                  type="button"
-                  onClick={handleSuspend}
-                  className="w-14 h-14 text-primary cursor-pointer transition-all"
-                  aria-label="Suspend account"
-                >
-                  <MdBlock className="text-3xl" />
-                </button>
-              ) : null}
+              <div className="flex items-center gap-2">
+                {showSuspend ? (
+                  <button
+                    type="button"
+                    onClick={handleSuspend}
+                    className="w-14 h-14 text-primary cursor-pointer transition-all"
+                    aria-label="Suspend account"
+                  >
+                    <MdBlock className="text-3xl" />
+                  </button>
+                ) : null}
+                {showDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="w-14 h-14 text-red-600 cursor-pointer transition-all"
+                    aria-label="Delete account"
+                  >
+                    <MdDeleteForever className="text-3xl" />
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {/* Balance Card */}
@@ -202,18 +254,28 @@ const UserProfile = () => {
 
             {/* Footer Actions */}
             <div className="flex items-center justify-between pt-4 pb-12">
-              {showSuspend ? (
-                <button
-                  type="button"
-                  onClick={handleSuspend}
-                  className="flex items-center gap-3 text-primary font-bold hover:opacity-80 transition-opacity"
-                >
-                  <MdBlock className="text-2xl" />
-                  <span>Suspend Account</span>
-                </button>
-              ) : (
-                <span />
-              )}
+              <div className="flex items-center gap-8">
+                {showSuspend ? (
+                  <button
+                    type="button"
+                    onClick={handleSuspend}
+                    className="flex items-center gap-3 text-primary font-bold hover:opacity-80 transition-opacity"
+                  >
+                    <MdBlock className="text-2xl" />
+                    <span>Suspend Account</span>
+                  </button>
+                ) : null}
+                {showDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="flex items-center gap-3 text-red-600 font-bold hover:opacity-80 transition-opacity"
+                  >
+                    <MdDeleteForever className="text-2xl" />
+                    <span>Delete Account</span>
+                  </button>
+                ) : null}
+              </div>
 
               <button
                 onClick={() => navigate(`/users/transactions/${user.id}`)}
@@ -274,6 +336,65 @@ const UserProfile = () => {
                 className="flex-1 bg-white text-text-primary py-3 rounded-full font-normal text-sm border border-border shadow-sm hover:bg-gray-50 transition-all"
               >
                 Go to Wallet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-[#1E2633]/40 backdrop-blur-sm"
+            onClick={() => {
+              setIsDeleteModalOpen(false);
+              setDeleteConfirmText("");
+            }}
+          ></div>
+
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl animate-in fade-in zoom-in duration-300">
+            <h2 className="text-3xl font-bold text-red-600 mb-4">Delete this Account?</h2>
+            <p className="text-sm text-gray-500 mb-8">
+              This permanently deletes {displayLabel}'s account and all of their wallet points and
+              redemption history. This action cannot be undone.
+            </p>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">
+                TYPE "DELETE" TO CONFIRM
+              </label>
+              <input
+                type="text"
+                placeholder="DELETE"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full bg-white mt-2 border-2 border-border rounded-[28px] p-6 outline-none focus:ring-2 focus:ring-red-600/10 transition-all text-lg"
+              />
+            </div>
+
+            <div className="flex gap-4 mt-5">
+              <button
+                onClick={handleDeleteSubmit}
+                disabled={deleteConfirmText !== "DELETE" || isDeleting}
+                className="flex-1 bg-red-600 text-white py-3 rounded-full font-normal text-sm shadow-xl disabled:opacity-40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center"
+              >
+                {isDeleting ? (
+                  <div className="w-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  "Permanently Delete"
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteConfirmText("");
+                }}
+                className="flex-1 bg-white text-text-primary py-3 rounded-full font-normal text-sm border border-border shadow-sm hover:bg-gray-50 transition-all"
+              >
+                Cancel
               </button>
             </div>
           </div>
