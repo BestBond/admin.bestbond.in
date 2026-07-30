@@ -7,34 +7,52 @@ import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import type { AdminUserListItem } from "../utils/types";
 
+const PAGE_SIZE = 50;
+
 const UserList = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [professionFilter, setProfessionFilter] = useState("all");
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (offset: number) => {
+    const isFirstPage = offset === 0;
+    isFirstPage ? setLoading(true) : setLoadingMore(true);
     try {
       const res = await api.get("/admin/users", {
-        params: { q: searchTerm, profession: professionFilter === "all" ? undefined : professionFilter }
+        params: {
+          q: searchTerm,
+          profession: professionFilter === "all" ? undefined : professionFilter,
+          take: PAGE_SIZE,
+          offset,
+        }
       });
-      setUsers(res.data.items || []);
+      const items: AdminUserListItem[] = res.data.items || [];
+      setUsers((prev) => (isFirstPage ? items : [...prev, ...items]));
+      setTotal(res.data.total ?? items.length);
+      setHasMore(Boolean(res.data.hasMore));
     } catch (error) {
       console.error("FETCH USERS ERROR", error);
     } finally {
-      setLoading(false);
+      isFirstPage ? setLoading(false) : setLoadingMore(false);
     }
   }, [searchTerm, professionFilter]);
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(0);
   }, [fetchUsers]);
 
   useRefetchOnDocumentVisible(() => {
-    void fetchUsers();
+    void fetchUsers(0);
   });
+
+  const handleLoadMore = () => {
+    void fetchUsers(users.length);
+  };
 
   const professionFilters = [
     { value: "all", label: "All" },
@@ -131,6 +149,22 @@ const UserList = () => {
                   {users.length === 0 && (
                     <div className="bg-white rounded-[32px] p-20 text-center text-gray-400 border border-dashed border-gray-200">
                       <p className="text-lg font-medium italic">No users found matching your criteria.</p>
+                    </div>
+                  )}
+                  {users.length > 0 && (
+                    <div className="flex flex-col items-center gap-3 pt-4 pb-2">
+                      <p className="text-sm text-gray-400">
+                        Showing {users.length} of {total} users
+                      </p>
+                      {hasMore && (
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
+                          className="px-8 py-3 rounded-full font-bricolage text-base font-semibold bg-text-primary text-white hover:bg-text-primary/90 transition-all disabled:opacity-50"
+                        >
+                          {loadingMore ? "Loading…" : "Load More"}
+                        </button>
+                      )}
                     </div>
                   )}
                 </>
