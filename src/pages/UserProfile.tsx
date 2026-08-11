@@ -3,7 +3,7 @@ import { useRefetchOnDocumentVisible } from "../utils/useRefetchOnDocumentVisibl
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
-import { MdBlock, MdDeleteForever } from "react-icons/md";
+import { MdAddCircleOutline, MdBlock, MdDeleteForever } from "react-icons/md";
 import api from "../utils/api";
 import Swal from "sweetalert2";
 import type { AdminUserDetail } from "../utils/types";
@@ -28,6 +28,18 @@ function canDeleteAccounts(): boolean {
   }
 }
 
+function canManagePoints(): boolean {
+  try {
+    const raw = localStorage.getItem("userPermissions");
+    const p = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(p) && p.includes("points.manage");
+  } catch {
+    return false;
+  }
+}
+
+const MAX_POINTS_ADJUSTMENT = 10_000;
+
 const UserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -39,6 +51,10 @@ const UserProfile = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isAddPointsModalOpen, setIsAddPointsModalOpen] = useState(false);
+  const [pointsToAdd, setPointsToAdd] = useState("");
+  const [pointsReason, setPointsReason] = useState("");
+  const [isAddingPoints, setIsAddingPoints] = useState(false);
 
   const fetchUserDetail = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -120,6 +136,46 @@ const UserProfile = () => {
       Swal.fire('Error', message, 'error');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const parsedPoints = Number(pointsToAdd);
+  const isPointsValid =
+    Number.isInteger(parsedPoints) &&
+    parsedPoints > 0 &&
+    parsedPoints <= MAX_POINTS_ADJUSTMENT;
+  const isReasonValid = pointsReason.trim().length >= 3;
+
+  const handleAddPointsSubmit = async () => {
+    if (!user || !isPointsValid || !isReasonValid) return;
+    setIsAddingPoints(true);
+    try {
+      await api.post(`/admin/users/${user.id}/points/adjust`, {
+        points: parsedPoints,
+        reason: pointsReason.trim(),
+      });
+
+      Swal.fire({
+        title: "Points Added!",
+        text: `${parsedPoints} points credited to ${displayLabel}.`,
+        icon: "success",
+        confirmButtonColor: "#1E2633",
+        customClass: { popup: "rounded-[32px]" },
+      });
+
+      const res = await api.get(`/admin/users/${userId}`);
+      setUser(res.data);
+      setIsAddPointsModalOpen(false);
+      setPointsToAdd("");
+      setPointsReason("");
+    } catch (error) {
+      console.error("ADD POINTS ERROR", error);
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || "Failed to add points";
+      Swal.fire("Error", Array.isArray(message) ? message.join(", ") : message, "error");
+    } finally {
+      setIsAddingPoints(false);
     }
   };
 
@@ -223,9 +279,21 @@ const UserProfile = () => {
                   <span className="text-7xl font-black text-[#1E2633] tracking-tighter font-bricolage">{user.loyaltyPoints}</span>
                   <span className="text-2xl font-bold text-secondary">PTS</span>
                 </div>
-                <div className="pt-6">
-                  <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">LAST UPDATED</p>
-                  <p className="text-sm font-bold text-[#1E2633] mt-1 font-bricolage">{user.updatedAt ? new Date(user.updatedAt).toLocaleString() : "N/A"}</p>
+                <div className="pt-6 flex items-end justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">LAST UPDATED</p>
+                    <p className="text-sm font-bold text-[#1E2633] mt-1 font-bricolage">{user.updatedAt ? new Date(user.updatedAt).toLocaleString() : "N/A"}</p>
+                  </div>
+                  {canManagePoints() ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPointsModalOpen(true)}
+                      className="flex items-center gap-2 text-primary font-bold hover:opacity-80 transition-opacity"
+                    >
+                      <MdAddCircleOutline className="text-2xl" />
+                      <span>Add Points</span>
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -336,6 +404,88 @@ const UserProfile = () => {
                 className="flex-1 bg-white text-text-primary py-3 rounded-full font-normal text-sm border border-border shadow-sm hover:bg-gray-50 transition-all"
               >
                 Go to Wallet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Add Points Modal */}
+      {isAddPointsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-[#1E2633]/40 backdrop-blur-sm"
+            onClick={() => {
+              setIsAddPointsModalOpen(false);
+              setPointsToAdd("");
+              setPointsReason("");
+            }}
+          ></div>
+
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-[40px] p-10 w-full max-w-xl shadow-2xl animate-in fade-in zoom-in duration-300">
+            <h2 className="text-3xl font-bold text-[#1E2633] mb-2">Add Points</h2>
+            <p className="text-sm text-gray-500 mb-8">
+              Manually credit {displayLabel}'s wallet. Max {MAX_POINTS_ADJUSTMENT.toLocaleString()} points per action.
+              This cannot be undone from here — deduct manually if you make a mistake.
+            </p>
+
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">
+                  POINTS TO ADD
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={MAX_POINTS_ADJUSTMENT}
+                  placeholder="e.g. 100"
+                  value={pointsToAdd}
+                  onChange={(e) => setPointsToAdd(e.target.value)}
+                  className="w-full bg-white mt-2 border-2 border-border rounded-[28px] p-6 outline-none focus:ring-2 focus:ring-[#A73A00]/10 transition-all text-lg"
+                />
+                {pointsToAdd && !isPointsValid ? (
+                  <p className="text-xs text-red-600 ml-2">
+                    Enter a whole number between 1 and {MAX_POINTS_ADJUSTMENT.toLocaleString()}.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-2">
+                  REASON (REQUIRED, RECORDED FOR AUDIT)
+                </label>
+                <textarea
+                  placeholder="Why are you adding these points?"
+                  value={pointsReason}
+                  onChange={(e) => setPointsReason(e.target.value)}
+                  className="w-full bg-white mt-2 border-2 border-border rounded-[28px] p-6 min-h-[120px] outline-none focus:ring-2 focus:ring-[#A73A00]/10 transition-all text-lg resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-5">
+              <button
+                onClick={handleAddPointsSubmit}
+                disabled={!isPointsValid || !isReasonValid || isAddingPoints}
+                className="flex-1 bg-brand-orange-dark text-white py-3 rounded-full font-normal text-sm shadow-xl disabled:opacity-40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center"
+              >
+                {isAddingPoints ? (
+                  <div className="w-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  "Confirm & Add Points"
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setIsAddPointsModalOpen(false);
+                  setPointsToAdd("");
+                  setPointsReason("");
+                }}
+                className="flex-1 bg-white text-text-primary py-3 rounded-full font-normal text-sm border border-border shadow-sm hover:bg-gray-50 transition-all"
+              >
+                Cancel
               </button>
             </div>
           </div>
